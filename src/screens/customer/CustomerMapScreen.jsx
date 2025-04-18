@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,47 +6,70 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Linking,
+  Platform,
 } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import { Search, Navigation, Filter } from "lucide-react-native";
+
+import { getUserLocation } from "../../services/getUserLocation";
+
+import { fakeData } from "./fakeData";
+import { findNearParkingLots } from "../../services/findNearParkingLots";
 
 export default function CustomerMapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Mock data for nearby parking lots
-  const nearbyParkingLots = [
-    {
-      id: 1,
-      name: "Bãi đỗ xe Trung tâm",
-      address: "123 Đường Lê Lợi, Quận 1",
-      distance: "0.5 km",
-      availableSpots: 15,
-      price: "15,000 VND/giờ",
-    },
-    {
-      id: 2,
-      name: "Bãi đỗ xe Vincom",
-      address: "456 Đường Đồng Khởi, Quận 1",
-      distance: "1.2 km",
-      availableSpots: 8,
-      price: "20,000 VND/giờ",
-    },
-    {
-      id: 3,
-      name: "Bãi đỗ xe Landmark 81",
-      address: "789 Đường Điện Biên Phủ, Bình Thạnh",
-      distance: "2.5 km",
-      availableSpots: 25,
-      price: "25,000 VND/giờ",
-    },
-  ];
+  const [userLocation, setUserLocation] = useState(null);
+  const nearestLots = findNearParkingLots(userLocation, fakeData);
+
+  useEffect(() => {
+    (async () => {
+      const location = await getUserLocation();
+      if (location) {
+        setUserLocation(location);
+      }
+    })();
+  }, []);
+
+  if (!userLocation) {
+    return <Text>Đang tải vị trí...</Text>;
+  }
+
+  /* Hàm mở gg map */
+  const handleOpenDirections = (
+    destinationLat,
+    destinationLon,
+    destinationName
+  ) => {
+    // Chuyển đổi tên địa điểm thành dạng URL-friendly
+    const encodedName = encodeURIComponent(destinationName);
+
+    // Kiểm tra nền tảng (iOS dùng Apple Maps, Android dùng Google Maps)
+    const scheme = Platform.select({
+      ios: `maps://app?daddr=${destinationLat},${destinationLon}&q=${encodedName}`,
+      android: `google.navigation:q=${destinationLat},${destinationLon}`,
+    });
+
+    // Fallback URL nếu ứng dụng Maps không được cài đặt
+    const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLon}&travelmode=driving`;
+
+    // Thử mở ứng dụng bản đồ, nếu thất bại thì mở trình duyệt
+    Linking.canOpenURL(scheme)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(scheme);
+        } else {
+          return Linking.openURL(fallbackUrl);
+        }
+      })
+      .catch((err) => console.error("Lỗi khi mở Maps:", err));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tìm bãi đỗ xe</Text>
-      </View> */}
-
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Search size={20} color="#6B7280" />
@@ -64,23 +87,44 @@ export default function CustomerMapScreen() {
 
       <View style={styles.mapContainer}>
         {/* Map placeholder - in a real app, you would use a map component here */}
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapPlaceholderText}>Bản đồ bãi đỗ xe</Text>
-        </View>
+        <MapView
+          style={styles.mapPlaceholder}
+          initialRegion={{
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={true}
+        >
+          {nearestLots.map((lot) => (
+            <Marker
+              key={lot.id}
+              coordinate={{
+                latitude: lot.latitude,
+                longitude: lot.longitude,
+              }}
+              title={lot.name}
+              description={`Còn ${
+                lot.availableSpots
+              } chỗ trống | Khoảng cách: ${lot.distance.toFixed(1)} km`}
+            />
+          ))}
+        </MapView>
       </View>
 
       <View style={styles.nearbyContainer}>
         <Text style={styles.nearbyTitle}>Bãi đỗ xe gần đây</Text>
-
         <ScrollView style={styles.parkingList}>
-          {nearbyParkingLots.map((lot) => (
+          {nearestLots.map((lot) => (
             <TouchableOpacity key={lot.id} style={styles.parkingItem}>
               <View style={styles.parkingInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>
                 <Text style={styles.parkingAddress}>{lot.address}</Text>
                 <View style={styles.parkingDetails}>
                   <Text style={styles.parkingDistance}>
-                    <Navigation size={14} color="#6B7280" /> {lot.distance}
+                    <Navigation size={14} color="#6B7280" />{" "}
+                    {lot.distance.toFixed(1)} km
                   </Text>
                   <Text style={styles.parkingSpots}>
                     {lot.availableSpots} chỗ trống
@@ -88,7 +132,12 @@ export default function CustomerMapScreen() {
                   <Text style={styles.parkingPrice}>{lot.price}</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.directionButton}>
+              <TouchableOpacity
+                style={styles.directionButton}
+                onPress={() =>
+                  handleOpenDirections(lot.latitude, lot.longitude, lot.name)
+                }
+              >
                 <Text style={styles.directionButtonText}>Chỉ đường</Text>
               </TouchableOpacity>
             </TouchableOpacity>

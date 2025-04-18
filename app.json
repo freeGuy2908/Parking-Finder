@@ -1,5 +1,8 @@
 {
   "expo": {
+    "permissions": [
+      "location"
+    ],
     "name": "parking-app",
     "slug": "parking-app",
     "version": "1.0.0",
@@ -13,13 +16,21 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần truy cập vị trí để tìm bãi đỗ xe gần bạn.",
+        "LSApplicationQueriesSchemes": ["maps", "googlemaps"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

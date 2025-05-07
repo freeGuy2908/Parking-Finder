@@ -1,7 +1,7 @@
 export const fakeData = [
   {
     id: 1,
-    name: "Bãi đỗ A",
+    name: "Bãi đỗ jido",
     address: "Số 1, Đường ABC, Quận 1",
     latitude: 21.003655930437116,
     longitude: 105.84088050826976,

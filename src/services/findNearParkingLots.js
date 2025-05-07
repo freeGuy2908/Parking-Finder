@@ -9,8 +9,8 @@ export const findNearParkingLots = (userLocation, parkingLots, limit = 5) => {
     distance: calculateDistance(
       userLocation.latitude,
       userLocation.longitude,
-      lot.latitude,
-      lot.longitude
+      lot.location.latitude,
+      lot.location.longitude
     ),
   }));
 

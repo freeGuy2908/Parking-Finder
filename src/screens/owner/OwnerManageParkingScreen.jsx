@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -18,10 +19,13 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
+import { db } from "../../../firebaseConfig";
+import { collection, getDocs } from "firebase/firestore";
+
 export default function OwnerManageParkingScreen() {
   // Mock data for parking lots
   const [parkingLots, setParkingLots] = useState([
-    {
+    /* {
       id: 1,
       name: "Bãi đỗ xe Trung tâm",
       address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
@@ -42,8 +46,37 @@ export default function OwnerManageParkingScreen() {
       openTime: "08:00",
       closeTime: "23:00",
       image: "https://placeholder.svg?height=100&width=100",
-    },
+    }, */
   ]);
+  const [loading, setLoading] = useState(true);
+
+  // Hàm lấy dữ liệu từ Firestore
+  const fetchParkingLots = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "parkingLots"));
+      const lots = [];
+      querySnapshot.forEach((doc) => {
+        lots.push({ id: doc.id, ...doc.data() });
+      });
+      setParkingLots(lots);
+    } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchParkingLots();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -51,7 +84,10 @@ export default function OwnerManageParkingScreen() {
         {parkingLots.map((lot) => (
           <View key={lot.id} style={styles.parkingLotCard}>
             <View style={styles.cardHeader}>
-              <Image source={{ uri: lot.image }} style={styles.parkingImage} />
+              <Image
+                source={{ uri: lot.images[0] }}
+                style={styles.parkingImage}
+              />
               <View style={styles.headerInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>
                 <View style={styles.addressContainer}>
@@ -68,16 +104,16 @@ export default function OwnerManageParkingScreen() {
               <View style={styles.statItem}>
                 <Car size={16} color="#4F46E5" />
                 <Text style={styles.statText}>
-                  {lot.availableSpots}/{lot.totalSpots} chỗ trống
+                  {lot.totalSpots}/{lot.totalSpots} chỗ trống
                 </Text>
               </View>
 
-              <View style={styles.statItem}>
+              {/* <View style={styles.statItem}>
                 <Clock size={16} color="#4F46E5" />
                 <Text style={styles.statText}>
                   {lot.openTime} - {lot.closeTime}
                 </Text>
-              </View>
+              </View> */}
 
               <View style={styles.statItem}>
                 <DollarSign size={16} color="#4F46E5" />
@@ -120,6 +156,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     padding: 16,

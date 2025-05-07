@@ -19,11 +19,35 @@ import { getUserLocation } from "../../services/getUserLocation";
 import { fakeData } from "./fakeData";
 import { findNearParkingLots } from "../../services/findNearParkingLots";
 
+import { db } from "../../../firebaseConfig";
+import { collection, getDocs } from "firebase/firestore";
+
 export default function CustomerMapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [parkingLots, setParkingLots] = useState([]);
+
+  // Hàm lấy dữ liệu từ Firestore
+  const fetchParkingLots = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "parkingLots"));
+      const lots = [];
+      querySnapshot.forEach((doc) => {
+        lots.push({ id: doc.id, ...doc.data() });
+      });
+      setParkingLots(lots);
+    } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchParkingLots();
+  }, []);
 
   const [userLocation, setUserLocation] = useState(null);
-  const nearestLots = findNearParkingLots(userLocation, fakeData);
+  const nearestLots = findNearParkingLots(userLocation, parkingLots);
 
   useEffect(() => {
     (async () => {
@@ -101,12 +125,12 @@ export default function CustomerMapScreen() {
             <Marker
               key={lot.id}
               coordinate={{
-                latitude: lot.latitude,
-                longitude: lot.longitude,
+                latitude: lot.location.latitude,
+                longitude: lot.location.longitude,
               }}
               title={lot.name}
               description={`Còn ${
-                lot.availableSpots
+                lot.totalSpots
               } chỗ trống | Khoảng cách: ${lot.distance.toFixed(1)} km`}
             />
           ))}
@@ -127,7 +151,7 @@ export default function CustomerMapScreen() {
                     {lot.distance.toFixed(1)} km
                   </Text>
                   <Text style={styles.parkingSpots}>
-                    {lot.availableSpots} chỗ trống
+                    {lot.totalSpots} chỗ trống
                   </Text>
                   <Text style={styles.parkingPrice}>{lot.price}</Text>
                 </View>
@@ -135,7 +159,11 @@ export default function CustomerMapScreen() {
               <TouchableOpacity
                 style={styles.directionButton}
                 onPress={() =>
-                  handleOpenDirections(lot.latitude, lot.longitude, lot.name)
+                  handleOpenDirections(
+                    lot.location.latitude,
+                    lot.location.longitude,
+                    lot.name
+                  )
                 }
               >
                 <Text style={styles.directionButtonText}>Chỉ đường</Text>

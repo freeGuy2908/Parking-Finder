@@ -1,0 +1,30 @@
+import { Linking } from "react-native";
+import * as Location from "expo-location";
+import { getLatLngFromAddress } from "./getLatLngFromAddress";
+
+export const openGoogleMapsDirections = async (
+  originAddress,
+  destinationAddress
+) => {
+  try {
+    // 1. Lay vi tri hien tai
+    // const { status } = await Location.requestForegroundPermissionsAsync();
+    // if (status !== "granted") {
+    //   alert("Không được cấp quyền truy cập vị trí");
+    //   return;
+    // }
+    // const currentLoc = await Location.getCurrentPositionAsync({});
+    // const origin = `${currentLoc.coords.latitude}, ${currentLoc.coords.longitude}`;
+
+    // 2. Chuyen dia chi thanh toa do
+    const desCoords = await getLatLngFromAddress(destinationAddress);
+    const destination = `${desCoords.lat}, ${desCoords.lng}`;
+
+    // 3. Mo Google Maps
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${originAddress}&destination=${destination}&travelmode=driving`;
+    Linking.openURL(url);
+  } catch (error) {
+    console.error("Lỗi khi chỉ đường: ", error);
+    alert("Không thể tìm đường đi. Vui lòng thử lại.");
+  }
+};

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -20,40 +22,32 @@ import {
 } from "lucide-react-native";
 
 import { db } from "../../../firebaseConfig";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
+
+import { useSelector } from "react-redux";
+import { selectUser } from "../../redux/authSlice";
 
 export default function OwnerManageParkingScreen() {
-  // Mock data for parking lots
-  const [parkingLots, setParkingLots] = useState([
-    /* {
-      id: 1,
-      name: "Bãi đỗ xe Trung tâm",
-      address: "123 Đường Lê Lợi, Quận 1, TP.HCM",
-      totalSpots: 50,
-      availableSpots: 15,
-      pricePerHour: "15,000 VND",
-      openTime: "07:00",
-      closeTime: "22:00",
-      image: "https://placeholder.svg?height=100&width=100",
-    },
-    {
-      id: 2,
-      name: "Bãi đỗ xe Vincom",
-      address: "456 Đường Đồng Khởi, Quận 1, TP.HCM",
-      totalSpots: 80,
-      availableSpots: 32,
-      pricePerHour: "20,000 VND",
-      openTime: "08:00",
-      closeTime: "23:00",
-      image: "https://placeholder.svg?height=100&width=100",
-    }, */
-  ]);
+  const [parkingLots, setParkingLots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
+  const user = useSelector(selectUser);
 
   // Hàm lấy dữ liệu từ Firestore
   const fetchParkingLots = async () => {
+    setLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "parkingLots"));
+      const parkingLotsRef = collection(db, "parkingLots");
+      const q = query(parkingLotsRef, where("ownerId", "==", user.uid));
+
+      const querySnapshot = await getDocs(q);
       const lots = [];
       querySnapshot.forEach((doc) => {
         lots.push({ id: doc.id, ...doc.data() });
@@ -61,14 +55,52 @@ export default function OwnerManageParkingScreen() {
       setParkingLots(lots);
     } catch (error) {
       console.error("Lỗi khi lấy dữ liệu:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách bãi đỗ xe");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchParkingLots();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchParkingLots();
+    }, [])
+  );
+
+  const handleDeleteParkingLot = async (id) => {
+    Alert.alert(
+      "Xác nhận xóa",
+      "Ban có chắc chắn muốn xóa bãi đỗ này không?",
+      [
+        {
+          text: "Hủy",
+          onPress: () => console.log("Hủy xóa"),
+          style: "cancel",
+        },
+        {
+          text: "Xóa",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteDoc(doc(db, "parkingLots", id));
+              Alert.alert("Thành công", "Bãi đỗ đã được xóa thành công");
+              // Cap nhat danh sach sau khi xoa
+              fetchParkingLots();
+            } catch (error) {
+              console.error("Lỗi khi xóa bãi đỗ xe: ", error);
+              Alert.alert(
+                "Lỗi",
+                "Không thể xóa bãi đỗ xe này, vui lòng thử lại"
+              );
+              setLoading(false);
+            }
+          },
+          style: "default",
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   if (loading) {
     return (
@@ -122,13 +154,17 @@ export default function OwnerManageParkingScreen() {
             </ScrollView>
 
             <View style={styles.actionsContainer}>
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate("EditParking", { lot })}
+              >
                 <Edit size={16} color="#4F46E5" />
                 <Text style={styles.actionText}>Chỉnh sửa</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => handleDeleteParkingLot(lot.id)}
               >
                 <Trash2 size={16} color="#EF4444" />
                 <Text style={[styles.actionText, styles.deleteText]}>Xóa</Text>
@@ -136,6 +172,7 @@ export default function OwnerManageParkingScreen() {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.detailsButton]}
+                onPress={() => navigation.navigate("ParkingDetail", { lot })}
               >
                 <Text style={styles.detailsText}>Chi tiết</Text>
                 <ChevronRight size={16} color="#4F46E5" />

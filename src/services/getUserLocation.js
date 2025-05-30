@@ -3,13 +3,13 @@ import * as Location from "expo-location";
 export const getUserLocation = async () => {
   let { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== "granted") {
-    console.log("Quyền truy cập vị trí bị từ chối");
-    return null;
+    alert("Quyền truy cập vị trí bị từ chối");
+    return;
   }
 
-  let location = await Location.getCurrentPositionAsync({});
+  let currentLoc = await Location.getCurrentPositionAsync({});
   return {
-    latitude: location.coords.latitude,
-    longitude: location.coords.longitude,
+    latitude: currentLoc.coords.latitude,
+    longitude: currentLoc.coords.longitude,
   };
 };

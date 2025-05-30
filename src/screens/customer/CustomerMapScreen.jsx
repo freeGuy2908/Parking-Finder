@@ -17,10 +17,10 @@ import { Search, Navigation, Filter } from "lucide-react-native";
 import { getUserLocation } from "../../services/getUserLocation";
 
 import { fakeData } from "./fakeData";
-import { findNearParkingLots } from "../../services/findNearParkingLots";
 
 import { db } from "../../../firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
+import { openGoogleMapsDirections } from "../../utils/openGoogleMapsDirections";
 
 export default function CustomerMapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,12 +47,11 @@ export default function CustomerMapScreen() {
   }, []);
 
   const [userLocation, setUserLocation] = useState(null);
-  const nearestLots = findNearParkingLots(userLocation, parkingLots);
-
   useEffect(() => {
     (async () => {
       const location = await getUserLocation();
       if (location) {
+        console.log("Vị trí người dùng:", location);
         setUserLocation(location);
       }
     })();
@@ -61,36 +60,6 @@ export default function CustomerMapScreen() {
   if (!userLocation) {
     return <Text>Đang tải vị trí...</Text>;
   }
-
-  /* Hàm mở gg map */
-  const handleOpenDirections = (
-    destinationLat,
-    destinationLon,
-    destinationName
-  ) => {
-    // Chuyển đổi tên địa điểm thành dạng URL-friendly
-    const encodedName = encodeURIComponent(destinationName);
-
-    // Kiểm tra nền tảng (iOS dùng Apple Maps, Android dùng Google Maps)
-    const scheme = Platform.select({
-      ios: `maps://app?daddr=${destinationLat},${destinationLon}&q=${encodedName}`,
-      android: `google.navigation:q=${destinationLat},${destinationLon}`,
-    });
-
-    // Fallback URL nếu ứng dụng Maps không được cài đặt
-    const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLon}&travelmode=driving`;
-
-    // Thử mở ứng dụng bản đồ, nếu thất bại thì mở trình duyệt
-    Linking.canOpenURL(scheme)
-      .then((supported) => {
-        if (supported) {
-          return Linking.openURL(scheme);
-        } else {
-          return Linking.openURL(fallbackUrl);
-        }
-      })
-      .catch((err) => console.error("Lỗi khi mở Maps:", err));
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,10 +79,9 @@ export default function CustomerMapScreen() {
       </View>
 
       <View style={styles.mapContainer}>
-        {/* Map placeholder - in a real app, you would use a map component here */}
         <MapView
           style={styles.mapPlaceholder}
-          initialRegion={{
+          region={{
             latitude: userLocation.latitude,
             longitude: userLocation.longitude,
             latitudeDelta: 0.01,
@@ -121,34 +89,27 @@ export default function CustomerMapScreen() {
           }}
           showsUserLocation={true}
         >
-          {nearestLots.map((lot) => (
-            <Marker
-              key={lot.id}
-              coordinate={{
-                latitude: lot.location.latitude,
-                longitude: lot.location.longitude,
-              }}
-              title={lot.name}
-              description={`Còn ${
-                lot.totalSpots
-              } chỗ trống | Khoảng cách: ${lot.distance.toFixed(1)} km`}
-            />
-          ))}
+          <Marker
+            coordinate={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+            }}
+            title="Vị trí của bạn"
+          />
         </MapView>
       </View>
 
       <View style={styles.nearbyContainer}>
         <Text style={styles.nearbyTitle}>Bãi đỗ xe gần đây</Text>
         <ScrollView style={styles.parkingList}>
-          {nearestLots.map((lot) => (
+          {parkingLots.map((lot) => (
             <TouchableOpacity key={lot.id} style={styles.parkingItem}>
               <View style={styles.parkingInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>
                 <Text style={styles.parkingAddress}>{lot.address}</Text>
                 <View style={styles.parkingDetails}>
                   <Text style={styles.parkingDistance}>
-                    <Navigation size={14} color="#6B7280" />{" "}
-                    {lot.distance.toFixed(1)} km
+                    <Navigation size={14} color="#6B7280" /> ??? km
                   </Text>
                   <Text style={styles.parkingSpots}>
                     {lot.totalSpots} chỗ trống
@@ -159,10 +120,9 @@ export default function CustomerMapScreen() {
               <TouchableOpacity
                 style={styles.directionButton}
                 onPress={() =>
-                  handleOpenDirections(
-                    lot.location.latitude,
-                    lot.location.longitude,
-                    lot.name
+                  openGoogleMapsDirections(
+                    `${userLocation?.latitude}, ${userLocation?.longitude}`,
+                    lot.address
                   )
                 }
               >

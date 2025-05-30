@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createStackNavigator } from "@react-navigation/stack";
 import {
   Home,
   LayoutDashboard,
@@ -12,10 +13,13 @@ import OwnerRegisterParkingScreen from "../screens/owner/OwnerRegisterParkingScr
 import OwnerManageParkingScreen from "../screens/owner/OwnerManageParkingScreen";
 import CustomerProfileScreen from "../screens/customer/CustomerProfileScreen";
 import HomeButton from "../components/HomeButton";
+import EditLotScreen from "../screens/owner/manage/EditLotScreen";
+import ParkingLotDetailScreen from "../screens/owner/manage/ParkingLotDetailScreen";
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-export default function OwnerNavigator() {
+function OwnerTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -64,5 +68,33 @@ export default function OwnerNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+export default function OwnerNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="InOwnerTabs" component={OwnerTabs} />
+      <Stack.Screen
+        name="ParkingDetail"
+        component={ParkingLotDetailScreen}
+        options={{
+          headerShown: true,
+          title: "Chi tiết bãi đỗ",
+          presentation: "card",
+          animationTypeForReplace: "push",
+        }}
+      />
+      <Stack.Screen
+        name="EditParking"
+        component={EditLotScreen}
+        options={{
+          headerShown: true,
+          title: "Chỉnh sửa thông tin bãi đỗ",
+          presentation: "card",
+          animationTypeForReplace: "push",
+        }}
+      />
+    </Stack.Navigator>
   );
 }

@@ -9,60 +9,181 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { Car, UserCircle, Users } from "lucide-react-native";
+import {
+  Car,
+  UserCircle,
+  Users,
+  LogIn,
+  AlertCircle,
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
+
+// Redux
+import { useSelector } from "react-redux";
+import { selectIsAuthenticated, selectUser } from "../redux/authSlice";
+import { db } from "../../firebaseConfig"; // Đường dẫn tới file cấu hình Firebase
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectUser);
+  const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      checkStaffStatus();
+    }
+  }, [isAuthenticated, user]);
+
+  const checkStaffStatus = async () => {
+    try {
+      const q = query(
+        collection(db, "staffAssignments"),
+        where("staffEmail", "==", user.email)
+      );
+      const snapshot = await getDocs(q);
+      setIsStaff(!snapshot.empty);
+    } catch (error) {
+      console.error("Error checking staff status:", error);
+    }
+  };
+
+  // Xu ly khi chua login cho owner
+  const handleOwnerFeaturePress = (featureName, screenName) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Yêu cầu đăng nhập",
+        `Bạn cần đăng nhập để sử dụng chức năng "${featureName}".`,
+        [
+          { text: "Hủy", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => navigation.navigate("Login") },
+        ]
+      );
+    } else {
+      // Đã đăng nhập, cho phép truy cập trực tiếp vì không có ràng buộc vai trò
+      navigation.navigate(screenName);
+    }
+  };
+
+  const handleStaffFeaturePress = () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Yêu cầu đăng nhập",
+        "Bạn cần đăng nhập để sử dụng chức năng này.",
+        [
+          { text: "Hủy", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => navigation.navigate("Login") },
+        ]
+      );
+    } else if (!isStaff) {
+      Alert.alert(
+        "Thông báo",
+        "Liên hệ với chủ bãi xe để trở thành nhân viên.",
+        [{ text: "Đã hiểu" }]
+      );
+    } else {
+      navigation.navigate("StaffTabs");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
       <View style={styles.header}>
-        <Image
-          source={{ uri: "https://placeholder.svg?height=80&width=80" }}
-          style={styles.logo}
-        />
-        <Text style={styles.appTitle}>Parking Finder</Text>
+        <Text style={styles.appTitle}>ParkingFinder</Text>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.welcomeText}>
-          Chào mừng đến với ứng dụng quản lý và tìm bãi đỗ xe
+        {isAuthenticated && user?.fullName ? (
+          <Text style={styles.welcomeText}>Chào mừng {user.fullName}!</Text>
+        ) : (
+          <Text style={styles.welcomeText}>
+            Chào mừng đến với ParkingFinder
+          </Text>
+        )}
+        <Text style={styles.subWelcomeText}>
+          Khám phá các tiện ích quản lý và tìm kiếm bãi đỗ xe.
         </Text>
 
         <View style={styles.roleButtonsContainer}>
+          {/* Chức năng Tìm bãi đỗ xe - Luôn có thể truy cập */}
           <TouchableOpacity
             style={styles.roleButton}
             onPress={() => navigation.navigate("CustomerTabs")}
           >
-            <Car color="#4F46E5" size={32} />
-            <Text style={styles.roleButtonText}>Tìm bãi đỗ xe</Text>
-            <Text style={styles.roleDescription}>
-              Tìm kiếm bãi đỗ xe gần bạn
-            </Text>
+            <View style={styles.buttonIconContainer}>
+              <Car color="#3B82F6" size={28} />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.roleButtonText}>Tìm bãi đỗ xe</Text>
+              <Text style={styles.roleDescription}>
+                Dễ dàng tìm kiếm và định vị bãi đỗ xe phù hợp.
+              </Text>
+            </View>
           </TouchableOpacity>
 
+          {/* Chức năng Đăng ký bãi xe */}
           <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => navigation.navigate("OwnerTabs")}
+            style={styles.roleButton} // Không còn style disable khi đã đăng nhập
+            onPress={() =>
+              handleOwnerFeaturePress("Quản lý bãi xe", "OwnerTabs")
+            }
           >
-            <UserCircle color="#4F46E5" size={32} />
-            <Text style={styles.roleButtonText}>Đăng ký bãi xe</Text>
-            <Text style={styles.roleDescription}>
-              Quản lý bãi đỗ xe của bạn
-            </Text>
+            <View style={styles.buttonIconContainer}>
+              <UserCircle color="#10B981" size={28} />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.roleButtonText}>Quản lý bãi xe</Text>
+              <Text style={styles.roleDescription}>
+                Thiết lập và điều hành bãi đỗ xe của bạn hiệu quả.
+              </Text>
+            </View>
+            {!isAuthenticated && (
+              <View style={styles.loginRequiredPromptOnButton}>
+                <AlertCircle size={14} color="#EF4444" />
+                <Text style={styles.loginRequiredPromptOnButtonText}>
+                  Cần đăng nhập
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
+          {/* Chức năng Nhân viên bãi xe */}
           <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => navigation.navigate("StaffTabs")}
+            style={styles.roleButton} // Không còn style disable khi đã đăng nhập
+            onPress={handleStaffFeaturePress}
           >
-            <Users color="#4F46E5" size={32} />
-            <Text style={styles.roleButtonText}>Nhân viên bãi xe</Text>
-            <Text style={styles.roleDescription}>Quản lý xe ra vào bãi</Text>
+            <View style={styles.buttonIconContainer}>
+              <Users color="#F59E0B" size={28} />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.roleButtonText}>Nhân viên bãi xe</Text>
+              <Text style={styles.roleDescription}>
+                Hỗ trợ ghi nhận xe ra vào và các nghiệp vụ tại bãi.
+              </Text>
+            </View>
+            {!isAuthenticated && (
+              <View style={styles.loginRequiredPromptOnButton}>
+                <AlertCircle size={14} color="#EF4444" />
+                <Text style={styles.loginRequiredPromptOnButtonText}>
+                  Cần đăng nhập
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
+
+        {!isAuthenticated && (
+          <TouchableOpacity
+            style={styles.loginPrompt}
+            onPress={() => navigation.navigate("Login")}
+          >
+            <LogIn size={20} color="#FFFFFF" />
+            <Text style={styles.loginPromptText}>Đăng nhập</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.footer}>
@@ -75,61 +196,125 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F9FAFB", // Màu nền chung
   },
   header: {
     alignItems: "center",
-    paddingVertical: 20,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    paddingVertical: 25,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   appTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
-    marginTop: 10,
-    color: "#4F46E5",
+    color: "#4F46E5", // Màu chủ đạo
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    justifyContent: "center",
+    paddingVertical: 20, // Thêm padding vertical
   },
   welcomeText: {
-    fontSize: 18,
+    fontSize: 22,
+    fontWeight: "600",
     textAlign: "center",
-    marginBottom: 40,
+    marginBottom: 8,
     color: "#1F2937",
+  },
+  subWelcomeText: {
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: 30,
+    color: "#6B7280",
+    lineHeight: 22,
   },
   roleButtonsContainer: {
-    gap: 20,
+    gap: 18,
+    marginBottom: 30,
   },
   roleButton: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF", // Nền trắng cho các nút
     borderRadius: 12,
-    padding: 20,
-    alignItems: "flex-start",
-    borderLeftWidth: 4,
-    borderLeftColor: "#4F46E5",
+    padding: 16,
+    flexDirection: "row", // Icon và text nằm cùng hàng
+    alignItems: "center", // Căn giữa theo chiều dọc
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    position: "relative", // Để định vị loginRequiredPromptOnButton
+  },
+  buttonIconContainer: {
+    marginRight: 16,
+    backgroundColor: "#EFF6FF", // Nền nhẹ cho icon
+    padding: 10,
+    borderRadius: 8,
+  },
+  buttonTextContainer: {
+    flex: 1, // Cho phép text chiếm hết không gian còn lại
   },
   roleButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 10,
-    color: "#1F2937",
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#111827",
   },
   roleDescription: {
     fontSize: 14,
-    color: "#6B7280",
-    marginTop: 5,
+    color: "#4B5563",
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  loginRequiredPromptOnButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2", // Nền đỏ rất nhạt
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 12, // Bo tròn
+  },
+  loginRequiredPromptOnButtonText: {
+    fontSize: 11,
+    color: "#DC2626", // Màu đỏ đậm hơn
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  loginPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4F46E5", // Nút đăng nhập màu chủ đạo
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 10, // Giảm margin top
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: "#FFFFFF", // Text trắng
+    fontWeight: "600",
+    marginLeft: 10,
   },
   footer: {
-    padding: 20,
+    paddingVertical: 20,
     alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
   },
   footerText: {
-    color: "#9CA3AF",
+    color: "#6B7280",
+    fontSize: 13,
   },
 });

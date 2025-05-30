@@ -6,9 +6,14 @@ import CustomerParkingStatusScreen from "../screens/customer/CustomerParkingStat
 import CustomerProfileScreen from "../screens/customer/CustomerProfileScreen";
 import HomeButton from "../components/HomeButton";
 
+import { useSelector } from "react-redux";
+import { selectIsAuthenticated } from "../redux/authSlice";
+
 const Tab = createBottomTabNavigator();
 
 export default function CustomerNavigator() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -38,14 +43,16 @@ export default function CustomerNavigator() {
           tabBarIcon: ({ color }) => <Car size={24} color={color} />,
         }}
       />
-      <Tab.Screen
-        name="Profile"
-        component={CustomerProfileScreen}
-        options={{
-          title: "Tài khoản",
-          tabBarIcon: ({ color }) => <User size={24} color={color} />,
-        }}
-      />
+      {isAuthenticated && (
+        <Tab.Screen
+          name="Profile"
+          component={CustomerProfileScreen}
+          options={{
+            title: "Tài khoản",
+            tabBarIcon: ({ color }) => <User size={24} color={color} />,
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }

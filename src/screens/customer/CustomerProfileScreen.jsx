@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -16,7 +17,43 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
+import { useNavigation } from "@react-navigation/native";
+import { useSelector, useDispatch } from "react-redux";
+import { selectUser, logout } from "../../redux/authSlice";
+import { auth } from "../../../firebaseConfig";
+import { signOut } from "firebase/auth";
+
 export default function CustomerProfileScreen() {
+  const dispatch = useDispatch();
+  const navigation = useNavigation();
+  const user = useSelector(selectUser);
+
+  const handleLogout = async () => {
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      {
+        text: "Hủy",
+        style: "cancel",
+      },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            dispatch(logout());
+            // Reset navigation stack và điều hướng về HomeScreen
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "HomeScreen" }],
+            });
+          } catch (error) {
+            Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content}>
@@ -26,8 +63,8 @@ export default function CustomerProfileScreen() {
             style={styles.profileImage}
           />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Phạm Tuấn</Text>
-            <Text style={styles.profileEmail}>tuanpham@example.com</Text>
+            <Text style={styles.profileName}>{user?.fullName || "Khách"}</Text>
+            <Text style={styles.profileEmail}>{user?.email || ""}</Text>
           </View>
         </View>
 
@@ -75,7 +112,7 @@ export default function CustomerProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>

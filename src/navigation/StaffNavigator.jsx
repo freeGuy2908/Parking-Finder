@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Camera, QrCode, DollarSign, User } from "lucide-react-native";
 
 import StaffScanScreen from "../screens/staff/StaffScanScreen";
+import VehicleTracking from "../screens/owner/VehicleTracking";
 import StaffTicketsScreen from "../screens/staff/StaffTicketsScreen";
 import StaffPaymentScreen from "../screens/staff/StaffPaymentScreen";
 import CustomerProfileScreen from "../screens/customer/CustomerProfileScreen";
@@ -25,7 +26,7 @@ export default function StaffNavigator() {
     >
       <Tab.Screen
         name="Scan"
-        component={StaffScanScreen}
+        component={VehicleTracking}
         options={{
           title: "Quét biển số",
           tabBarIcon: ({ color }) => <Camera size={24} color={color} />,

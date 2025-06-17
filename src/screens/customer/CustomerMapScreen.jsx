@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Linking,
-  Platform,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,15 +14,15 @@ import { Search, Navigation, Filter } from "lucide-react-native";
 
 import { getUserLocation } from "../../services/getUserLocation";
 
-import { fakeData } from "./fakeData";
-
 import { db } from "../../../firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { openGoogleMapsDirections } from "../../utils/openGoogleMapsDirections";
+import { getDistance } from "../../utils/getDistance";
 
 export default function CustomerMapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [parkingLots, setParkingLots] = useState([]);
+  const [parkingLotsWithDistance, setParkingLotsWithDistance] = useState([]);
 
   // Hàm lấy dữ liệu từ Firestore
   const fetchParkingLots = async () => {
@@ -56,6 +54,29 @@ export default function CustomerMapScreen() {
       }
     })();
   }, []);
+
+  // Tinh toan khoang cach tu vi tri user den bai do xe
+  useEffect(() => {
+    const fetchDistances = async () => {
+      if (!userLocation || parkingLots.length === 0) return;
+
+      const updatedLots = await Promise.all(
+        parkingLots.map(async (lot) => {
+          const distance = await getDistance(userLocation, lot.address);
+          return {
+            ...lot,
+            distanceText: distance.text,
+            distanceValue: distance.value,
+          };
+        })
+      );
+
+      updatedLots.sort((a, b) => a.distanceValue - b.distanceValue);
+      setParkingLotsWithDistance(updatedLots);
+    };
+
+    fetchDistances();
+  }, [userLocation, parkingLots]);
 
   if (!userLocation) {
     return <Text>Đang tải vị trí...</Text>;
@@ -102,19 +123,19 @@ export default function CustomerMapScreen() {
       <View style={styles.nearbyContainer}>
         <Text style={styles.nearbyTitle}>Bãi đỗ xe gần đây</Text>
         <ScrollView style={styles.parkingList}>
-          {parkingLots.map((lot) => (
+          {parkingLotsWithDistance.map((lot) => (
             <TouchableOpacity key={lot.id} style={styles.parkingItem}>
               <View style={styles.parkingInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>
                 <Text style={styles.parkingAddress}>{lot.address}</Text>
                 <View style={styles.parkingDetails}>
                   <Text style={styles.parkingDistance}>
-                    <Navigation size={14} color="#6B7280" /> ??? km
+                    <Navigation size={14} color="#6B7280" /> {lot.distanceText}
                   </Text>
                   <Text style={styles.parkingSpots}>
-                    {lot.totalSpots} chỗ trống
+                    {lot.availableSpots} chỗ trống
                   </Text>
-                  <Text style={styles.parkingPrice}>{lot.price}</Text>
+                  <Text style={styles.parkingPrice}>{lot.pricePerHour}đ/h</Text>
                 </View>
               </View>
               <TouchableOpacity
@@ -249,7 +270,8 @@ const styles = StyleSheet.create({
   },
   parkingPrice: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#10B981",
+    fontWeight: "bold",
   },
   directionButton: {
     backgroundColor: "#4F46E5",

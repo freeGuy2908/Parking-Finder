@@ -9,7 +9,14 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Clock, MapPin, Car, QrCode, Search } from "lucide-react-native";
+import {
+  Clock,
+  MapPin,
+  Car,
+  QrCode,
+  Search,
+  CircleParking,
+} from "lucide-react-native";
 import { useState, useEffect } from "react";
 import { db } from "../../../firebaseConfig";
 import {
@@ -37,9 +44,9 @@ export default function CustomerParkingStatusScreen() {
       // Fetch active parking ticket
       const parkingLotsRef = collection(db, "parkingLots");
       const parkingLotsSnap = await getDocs(parkingLotsRef);
-      
+
       let found = false;
-      
+
       for (const parkingLotDoc of parkingLotsSnap.docs) {
         const ticketsRef = collection(parkingLotDoc.ref, "tickets");
         const q = query(
@@ -86,21 +93,26 @@ export default function CustomerParkingStatusScreen() {
         const ticketsSnap = await getDocs(q);
         ticketsSnap.forEach((doc) => {
           const data = doc.data();
+          console.log("Ticket data:", data);
           const duration = Math.floor(
             (data.exitTime.toDate() - data.entryTime.toDate()) / (1000 * 60)
           );
-          
+
           history.push({
             id: doc.id,
             parkingLot: parkingLotDoc.data().name,
-            date: data.entryTime.toDate().toLocaleDateString(),
+            //date: data.entryTime.toDate().toLocaleDateString(),
+            entryTime: data.entryTime.toDate().toLocaleString(),
+            exitTime: data.exitTime.toDate().toLocaleString(),
             duration: `${Math.floor(duration / 60)} giờ ${duration % 60} phút`,
             fee: `${data.totalAmount.toLocaleString()} VND`,
           });
         });
       }
 
-      setParkingHistory(history.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setParkingHistory(
+        history.sort((a, b) => new Date(b.entryTime) - new Date(a.entryTime))
+      );
     } catch (error) {
       console.error("Error searching:", error);
       Alert.alert("Lỗi", "Không thể tìm kiếm thông tin");
@@ -140,62 +152,62 @@ export default function CustomerParkingStatusScreen() {
         {/* Active parking section */}
         {activeParking ? (
           <View style={styles.activeParkingContainer}>
-          <View style={styles.activeParkingHeader}>
-            <Text style={styles.activeParkingTitle}>Đang gửi xe</Text>
-            <View style={styles.activeParkingStatus}>
-              <Text style={styles.activeParkingStatusText}>Đang hoạt động</Text>
-            </View>
-          </View>
-
-          <View style={styles.parkingCard}>
-            <View style={styles.parkingCardHeader}>
-              <Car size={24} color="#4F46E5" />
-              <Text style={styles.licensePlate}>
-                {activeParking.licensePlate}
-              </Text>
-            </View>
-
-            <View style={styles.parkingDetails}>
-              <Text style={styles.parkingLotName}>
-                {activeParking.parkingLot}
-              </Text>
-              <View style={styles.detailRow}>
-                <MapPin size={16} color="#6B7280" />
-                <Text style={styles.detailText}>
-                  {activeParking.address}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Clock size={16} color="#6B7280" />
-                <Text style={styles.detailText}>
-                  Vào lúc: {activeParking.entryTime}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Clock size={16} color="#6B7280" />
-                <Text style={styles.detailText}>
-                  Thời gian: {activeParking.duration}
-                </Text>
+            <View style={styles.activeParkingHeader}>
+              {/* <Text style={styles.activeParkingTitle}>Đang gửi xe</Text> */}
+              <View style={styles.activeParkingStatus}>
+                <Text style={styles.activeParkingStatusText}>Đang gửi xe</Text>
               </View>
             </View>
 
-            <View style={styles.feeContainer}>
-              <Text style={styles.feeLabel}>Phí ước tính:</Text>
-              <Text style={styles.feeAmount}>
-                {activeParking.estimatedFee}
-              </Text>
-            </View>
+            <View style={styles.parkingCard}>
+              <View style={styles.parkingCardHeader}>
+                <Car size={24} color="#4F46E5" />
+                <Text style={styles.licensePlate}>
+                  {activeParking.licensePlate}
+                </Text>
+              </View>
 
-            <TouchableOpacity style={styles.qrButton}>
+              <View style={styles.parkingDetails}>
+                <Text style={styles.parkingLotName}>
+                  {activeParking.parkingLot}
+                </Text>
+                <View style={styles.detailRow}>
+                  <MapPin size={16} color="#6B7280" />
+                  <Text style={styles.detailText}>{activeParking.address}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Clock size={16} color="#6B7280" />
+                  <Text style={styles.detailText}>
+                    Vào lúc: {activeParking.entryTime}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Clock size={16} color="#6B7280" />
+                  <Text style={styles.detailText}>
+                    Thời gian: {activeParking.duration}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.feeContainer}>
+                <Text style={styles.feeLabel}>Phí ước tính:</Text>
+                <Text style={styles.feeAmount}>
+                  {activeParking.estimatedFee}
+                </Text>
+              </View>
+
+              {/* <TouchableOpacity style={styles.qrButton}>
               <QrCode size={16} color="#ffffff" />
               <Text style={styles.qrButtonText}>Hiển thị mã QR</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
+            </View>
           </View>
-        </View>
         ) : (
           <View style={styles.noActiveParkingContainer}>
             <Text style={styles.noActiveParkingText}>
-              {licensePlate ? "Không tìm thấy xe đang gửi" : "Nhập biển số xe để tra cứu"}
+              {licensePlate
+                ? "Không tìm thấy xe đang gửi"
+                : "Nhập biển số xe để tra cứu"}
             </Text>
           </View>
         )}
@@ -208,8 +220,15 @@ export default function CustomerParkingStatusScreen() {
               parkingHistory.map((item) => (
                 <View key={item.id} style={styles.historyItem}>
                   <View style={styles.historyItemLeft}>
-                    <Text style={styles.historyParkingName}>{item.parkingLot}</Text>
-                    <Text style={styles.historyDate}>{item.date}</Text>
+                    <Text style={styles.historyParkingName}>
+                      {item.parkingLot}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      Vào lúc: {item.entryTime}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      Ra lúc: {item.exitTime}
+                    </Text>
                     <Text style={styles.historyDuration}>
                       Thời gian: {item.duration}
                     </Text>
@@ -271,7 +290,7 @@ const styles = StyleSheet.create({
   },
   activeParkingStatusText: {
     color: "#10B981",
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "bold",
   },
   parkingCard: {

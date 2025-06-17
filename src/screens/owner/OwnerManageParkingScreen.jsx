@@ -19,6 +19,7 @@ import {
   Car,
   DollarSign,
   ChevronRight,
+  UsersRound,
 } from "lucide-react-native";
 
 import { db } from "../../../firebaseConfig";
@@ -136,7 +137,7 @@ export default function OwnerManageParkingScreen() {
               <View style={styles.statItem}>
                 <Car size={16} color="#4F46E5" />
                 <Text style={styles.statText}>
-                  {lot.totalSpots}/{lot.totalSpots} chỗ trống
+                  {lot.availableSpots}/{lot.totalSpots} chỗ trống
                 </Text>
               </View>
 
@@ -150,6 +151,13 @@ export default function OwnerManageParkingScreen() {
               <View style={styles.statItem}>
                 <DollarSign size={16} color="#4F46E5" />
                 <Text style={styles.statText}>{lot.pricePerHour}/giờ</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <UsersRound size={16} color="#4F46E5" />
+                <Text style={styles.statText}>
+                  {lot.staffs ? lot.staffs.length : 0} nhân viên
+                </Text>
               </View>
             </ScrollView>
 
@@ -181,7 +189,10 @@ export default function OwnerManageParkingScreen() {
           </View>
         ))}
 
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate("RegisterParking")}
+        >
           <Text style={styles.addButtonText}>+ Thêm bãi đỗ xe mới</Text>
         </TouchableOpacity>
       </ScrollView>

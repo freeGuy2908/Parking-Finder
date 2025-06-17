@@ -33,6 +33,8 @@ export default function OwnerRegisterParkingScreen() {
   const [pricePerHour, setPricePerHour] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState([]);
+  const [bankId, setBankId] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigation = useNavigation();
@@ -74,12 +76,17 @@ export default function OwnerRegisterParkingScreen() {
         name,
         address,
         totalSpots: parseInt(totalSpots),
+        availableSpots: parseInt(totalSpots),
         pricePerHour: parseInt(pricePerHour),
         description,
         images: imageUrls,
         ownerId: user.uid,
         status: "pending",
         createdAt: serverTimestamp(),
+        activeVehicles: [],
+        staffs: [],
+        bankId: bankId.trim().toLowerCase(),
+        bankAccount: bankAccount.trim(),
       });
       Alert.alert("Thành công", "Đăng ký bãi đỗ xe thành công!");
       console.log("Đăng ký thành công! ID: ", docRef.id);
@@ -154,6 +161,28 @@ export default function OwnerRegisterParkingScreen() {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Tên ngân hàng nhận thanh toán</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="VD: viettinbank"
+            value={bankId}
+            onChangeText={setBankId}
+            autoCapitalize="characters"
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Số tài khoản nhận thanh toán</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nhập số tài khoản"
+            value={bankAccount}
+            onChangeText={setBankAccount}
+            keyboardType="numeric"
           />
         </View>
 

@@ -35,7 +35,6 @@ const authSlice = createSlice({
 
 export const { setUser, setLoading, setError, logout } = authSlice.actions;
 
-// Selectors
 export const selectUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectIsLoading = (state) => state.auth.isLoading;

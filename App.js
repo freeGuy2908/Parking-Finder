@@ -1,12 +1,14 @@
-import React, { useEffect } from "react"; // Thêm React và useEffect
-import { View, ActivityIndicator, Text } from "react-native"; // Thêm View, ActivityIndicator, Text
+import "react-native-gesture-handler";
+
+import React, { useEffect } from "react";
+import { View, ActivityIndicator, Text } from "react-native";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
 // Redux
-import { Provider, useDispatch, useSelector } from "react-redux"; // Thêm Provider, useDispatch, useSelector
+import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./src/redux/store";
 import {
   setUser,

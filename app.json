@@ -33,10 +33,16 @@
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "package": "com.tuanpham2908.parkingapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e312e063-8398-4d8a-a604-3b1466d330ad"
+      }
     }
   }
 }

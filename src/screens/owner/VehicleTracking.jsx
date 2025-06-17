@@ -14,6 +14,8 @@ import {
   serverTimestamp,
   doc,
   getDoc,
+  updateDoc,
+  arrayUnion,
 } from "firebase/firestore";
 import { useSelector } from "react-redux";
 import { selectUser } from "../../redux/authSlice";
@@ -132,6 +134,19 @@ export default function VehicleTracking() {
         return;
       }
 
+      // Lấy preference tới bãi đỗ xe
+      const parkingLotRef = doc(db, "parkingLots", parkingLot.id);
+      const parkingLotDoc = await getDoc(parkingLotRef);
+      if (!parkingLotDoc.exists()) {
+        Alert.alert("Lỗi", "Không tìm thấy bãi đỗ xe");
+        return;
+      }
+      const lotData = parkingLotDoc.data();
+      if (lotData.availableSpots !== undefined && lotData.availableSpots <= 0) {
+        Alert.alert("Lỗi", "Bãi đỗ xe đã hết chỗ trống");
+        return;
+      }
+
       // Create new ticket
       const ticketData = {
         licensePlate: licensePlate.toUpperCase(),
@@ -141,20 +156,28 @@ export default function VehicleTracking() {
         parkingLotId: parkingLot.id,
         parkingLotName: parkingLot.name,
         price: parkingLot.price,
-        totalAmount: null,
+        totalAmount: parkingLot.price,
         createdBy: user.uid,
         customerId: null,
       };
 
-      const docRef = await addDoc(
+      await addDoc(
         collection(db, "parkingLots", parkingLot.id, "tickets"),
         ticketData
       );
 
+      // Logic giảm số chỗ trống khi có xe vào
+      if (lotData.availableSpots !== undefined) {
+        await updateDoc(parkingLotRef, {
+          availableSpots: lotData.availableSpots - 1,
+          activeVehicles: arrayUnion(licensePlate.toUpperCase()),
+        });
+      }
+
       Alert.alert("Thành công", `Đã tạo vé cho xe ${licensePlate}`, [
         {
           text: "OK",
-          onPress: () => navigation.goBack(),
+          onPress: () => navigation.navigate("Tickets"),
         },
       ]);
     } catch (error) {

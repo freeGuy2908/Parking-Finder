@@ -8,6 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Modal,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -29,23 +31,15 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   onSnapshot,
   doc,
   updateDoc,
   serverTimestamp,
+  arrayRemove,
 } from "firebase/firestore";
 import { useSelector } from "react-redux";
 import { selectUser } from "../../redux/authSlice";
-
-// Hàm helper để chuyển đổi ngày giờ từ mock data thành Date object
-const parseEntryDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return new Date(); // Trả về ngày giờ hiện tại nếu thiếu
-  const [day, month, year] = dateStr.split("/").map(Number);
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  // Lưu ý: tháng trong JavaScript Date object là 0-indexed (0 = January, 1 = February, ...)
-
-  return new Date(year, month - 1, day, hours, minutes);
-};
 
 export default function StaffTicketsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,12 +47,15 @@ export default function StaffTicketsScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [parkingLot, setParkingLot] = useState(null);
+  const [selectedTab, setSelectedTab] = useState("active"); // chia tab cho Vé
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrInfo, setQrInfo] = useState(null); // { ticket, amount, qrUrl }
 
   const user = useSelector(selectUser);
   const navigation = useNavigation();
   const route = useRoute();
 
-  // Fetch parking lot info and active tickets
+  // Fetch parking lot info and all tickets (active + completed)
   useEffect(() => {
     const fetchParkingLotAndTickets = async () => {
       try {
@@ -74,20 +71,29 @@ export default function StaffTicketsScreen() {
         }
 
         const parkingLotId = staffSnapshot.docs[0].data().parkingLotId;
-        setParkingLot({
-          id: parkingLotId,
-          ...staffSnapshot.docs[0].data(),
-        });
+        // Lấy data của document tương ứng trong parkingLots collection
+        const parkingLotDoc = await getDoc(
+          doc(db, "parkingLots", parkingLotId)
+        );
+        if (parkingLotDoc.exists()) {
+          setParkingLot({
+            id: parkingLotId,
+            ...parkingLotDoc.data(),
+          });
+        } else {
+          setParkingLot({
+            id: parkingLotId,
+          });
+        }
 
-        // Then, subscribe to active tickets
+        // Subscribe to all tickets (active + completed)
         const ticketsRef = collection(
           db,
           "parkingLots",
           parkingLotId,
           "tickets"
         );
-        const q = query(ticketsRef, where("status", "==", "active"));
-
+        const q = query(ticketsRef);
         const unsubscribe = onSnapshot(q, (snapshot) => {
           const tickets = [];
           snapshot.forEach((doc) => {
@@ -95,28 +101,48 @@ export default function StaffTicketsScreen() {
               id: doc.id,
               ...doc.data(),
               entryTimestamp: doc.data().entryTime?.toDate(),
+              exitTimestamp: doc.data().exitTime?.toDate?.() || null,
+              totalAmount: doc.data().totalAmount,
             });
           });
           setActiveTickets(tickets);
           setIsLoading(false);
         });
-
         return () => unsubscribe();
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error(
+          "Error fetching data at fetchParkingLotAndTickets:",
+          error
+        );
         setIsLoading(false);
       }
     };
-
     if (user?.uid) {
       fetchParkingLotAndTickets();
     }
   }, [user?.uid]);
 
-  // Handle vehicle checkout
+  // Xử lý logic trả xe
   const handleCheckout = async (ticketId) => {
     try {
       if (!parkingLot?.id) return;
+
+      const ticket = activeTickets.find((t) => t.id === ticketId);
+      if (!ticket) {
+        Alert.alert("Lỗi", "Không tìm thấy vé");
+        return;
+      }
+
+      const now = new Date();
+      const entryTime = ticket.entryTime?.toDate
+        ? ticket.entryTime.toDate()
+        : null;
+      if (!entryTime) {
+        Alert.alert("Lỗi", "Vé không có thời gian vào.");
+        return;
+      }
+      const durationInHours = Math.ceil((now - entryTime) / (1000 * 60 * 60)); // giờ tròn
+      const totalAmount = durationInHours * ticket.price;
 
       const ticketRef = doc(
         db,
@@ -128,8 +154,21 @@ export default function StaffTicketsScreen() {
       await updateDoc(ticketRef, {
         exitTime: serverTimestamp(),
         status: "completed",
-        totalAmount: calculateAmount(ticket),
+        totalAmount,
       });
+
+      // Tăng số chỗ trống
+      const parkingLotRef = doc(db, "parkingLots", parkingLot.id);
+      const parkingLotDoc = await getDoc(parkingLotRef);
+      if (parkingLotDoc.exists()) {
+        const lotData = parkingLotDoc.data();
+        if (lotData.availableSpots !== undefined) {
+          await updateDoc(parkingLotRef, {
+            availableSpots: lotData.availableSpots + 1,
+            activeVehicles: arrayRemove(ticket.licensePlate.toUpperCase()),
+          });
+        }
+      }
 
       Alert.alert("Thành công", "Đã trả xe thành công");
     } catch (error) {
@@ -138,12 +177,22 @@ export default function StaffTicketsScreen() {
     }
   };
 
-  const calculateAmount = (ticket) => {
-    const now = new Date();
-    const entryTime = ticket.entryTimestamp;
-    const duration = (now - entryTime) / (1000 * 60 * 60); // hours
-    return Math.ceil(duration * ticket.price);
+  // Xử lý hiện mã VietQr
+  const handleShowQR = (ticket) => {
+    const amount = calculateRealtimeAmount(ticket);
+    const bankId = parkingLot.bankId;
+    const bankAccount = parkingLot.bankAccount;
+    const description = `Thanh toan ve xe ${ticket.licensePlate}`;
+    const qrUrl = `https://img.vietqr.io/image/${bankId}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(
+      description
+    )}`;
+    console.log("Lot", parkingLot);
+    console.log("QR URL:", qrUrl);
+    setQrInfo({ ticket, amount, qrUrl, description, bankAccount, bankId });
+    setShowQRModal(true);
   };
+
+  /** Group logic cho THỜI GIAN GỬI và TÍNH TIỀN */
 
   // Cập nhật currentTime mỗi phút để tính toán lại duration
   useEffect(() => {
@@ -188,8 +237,30 @@ export default function StaffTicketsScreen() {
     return "Vừa vào";
   };
 
-  const filteredTickets = activeTickets.filter((ticket) =>
-    ticket.licensePlate.toLowerCase().includes(searchQuery.toLowerCase())
+  // Hàm tính phí tạm tính realtime
+  const calculateRealtimeAmount = (ticket) => {
+    const now = currentTime;
+    const entryTime = ticket.entryTime?.toDate
+      ? ticket.entryTime.toDate()
+      : null;
+    if (!entryTime || !ticket.price) return 0;
+    const diffMs = now - entryTime;
+    const hours = Math.ceil(diffMs / (1000 * 60 * 60)); // Luôn làm tròn lên
+    return hours * ticket.price;
+  };
+
+  /** END GROUP */
+
+  // Lọc vé theo tab và tìm kiếm
+  const ticketsActive = activeTickets.filter(
+    (ticket) =>
+      ticket.status === "active" &&
+      ticket.licensePlate.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const ticketsCompleted = activeTickets.filter(
+    (ticket) =>
+      ticket.status === "completed" &&
+      ticket.licensePlate.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoading) {
@@ -216,84 +287,229 @@ export default function StaffTicketsScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate("Scan")} // Điều hướng đến màn hình chụp biển số
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            selectedTab === "active" && styles.tabButtonActive,
+          ]}
+          onPress={() => setSelectedTab("active")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              selectedTab === "active" && styles.tabTextActive,
+            ]}
           >
-            <QrCode size={24} color="#4F46E5" />
-            <Text style={styles.actionButtonText}>Tạo vé mới</Text>
-          </TouchableOpacity>
+            Vé đang gửi
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            selectedTab === "completed" && styles.tabButtonActive,
+          ]}
+          onPress={() => setSelectedTab("completed")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              selectedTab === "completed" && styles.tabTextActive,
+            ]}
+          >
+            Vé đã trả
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity style={[styles.actionButton, styles.scanButton]}>
-            <QrCode size={24} color="#ffffff" />
-            <Text style={[styles.actionButtonText, styles.scanButtonText]}>
-              Quét mã QR
+      <ScrollView style={styles.content}>
+        {selectedTab === "active" && (
+          <>
+            <Text style={styles.sectionTitle}>
+              Vé đang gửi ({ticketsActive.length})
             </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionTitle}>
-          Vé đang hoạt động ({filteredTickets.length})
-        </Text>
-
-        {filteredTickets.length === 0 && !isLoading ? (
-          <Text style={styles.emptyText}>Không có vé nào đang hoạt động.</Text>
-        ) : (
-          filteredTickets.map((ticket) => {
-            const { date: entryDate, time: entryTime } = formatDateTime(
-              ticket.entryTimestamp
-            );
-            const duration = calculateDuration(ticket.entryTimestamp);
-            const amount = calculateAmount(ticket);
-
-            return (
-              <TouchableOpacity key={ticket.id} style={styles.ticketCard}>
-                <View style={styles.ticketHeader}>
-                  <Car size={20} color="#4F46E5" />
-                  <Text style={styles.licensePlate}>{ticket.licensePlate}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Đang gửi</Text>
-                  </View>
-                </View>
-
-                <View style={styles.ticketDetails}>
-                  <View style={styles.detailItem}>
-                    <Clock size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>Giờ vào: {entryTime}</Text>
-                  </View>
-
-                  <View style={styles.detailItem}>
-                    <Calendar size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>Ngày: {entryDate}</Text>
-                  </View>
-
-                  <View style={styles.detailItem}>
-                    <Clock size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>Thời gian: {duration}</Text>
-                  </View>
-
-                  {/* <View style={styles.detailItem}>
-                    <Text style={styles.detailText}>
-                      Phí tạm tính: {amount.toLocaleString()}đ
-                    </Text>
-                  </View> */}
-                </View>
-
-                <View style={styles.ticketActions}>
-                  <TouchableOpacity
-                    style={styles.checkoutButton}
-                    onPress={() => handleCheckout(ticket.id)}
-                  >
-                    <Text style={styles.checkoutButtonText}>Trả xe</Text>
+            {ticketsActive.length === 0 && !isLoading ? (
+              <Text style={styles.emptyText}>Không có vé nào.</Text>
+            ) : (
+              ticketsActive.map((ticket) => {
+                const { date: entryDate, time: entryTime } = formatDateTime(
+                  ticket.entryTimestamp
+                );
+                const duration = calculateDuration(ticket.entryTimestamp);
+                const amount = calculateRealtimeAmount(ticket);
+                return (
+                  <TouchableOpacity key={ticket.id} style={styles.ticketCard}>
+                    <View style={styles.ticketHeader}>
+                      <Car size={20} color="#4F46E5" />
+                      <Text style={styles.licensePlate}>
+                        {ticket.licensePlate}
+                      </Text>
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusText}>Đang gửi</Text>
+                      </View>
+                    </View>
+                    <View style={styles.ticketDetails}>
+                      <View style={styles.detailItem}>
+                        <Clock size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Giờ vào: {entryTime}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Calendar size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>Ngày: {entryDate}</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Clock size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Thời gian: {duration}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Text style={styles.detailText}>
+                          Phí tạm tính: {amount.toLocaleString()}đ
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.ticketActions}>
+                      <TouchableOpacity
+                        style={styles.checkoutButton}
+                        onPress={() => handleShowQR(ticket)}
+                      >
+                        <Text style={styles.checkoutButtonText}>Trả xe</Text>
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            );
-          })
+                );
+              })
+            )}
+          </>
+        )}
+        {selectedTab === "completed" && (
+          <>
+            <Text style={styles.sectionTitle}>
+              Vé đã trả ({ticketsCompleted.length})
+            </Text>
+            {ticketsCompleted.length === 0 && !isLoading ? (
+              <Text style={styles.emptyText}>Không có vé nào.</Text>
+            ) : (
+              ticketsCompleted.map((ticket) => {
+                const { date: entryDate, time: entryTime } = formatDateTime(
+                  ticket.entryTimestamp
+                );
+                const { date: exitDate, time: exitTime } = ticket.exitTimestamp
+                  ? formatDateTime(ticket.exitTimestamp)
+                  : { date: "-", time: "-" };
+                const duration = ticket.exitTimestamp
+                  ? calculateDuration(
+                      ticket.entryTimestamp,
+                      ticket.exitTimestamp
+                    )
+                  : "-";
+                const amount = ticket.totalAmount || 0;
+                return (
+                  <View key={ticket.id} style={styles.ticketCard}>
+                    <View style={styles.ticketHeader}>
+                      <Car size={20} color="#4F46E5" />
+                      <Text style={styles.licensePlate}>
+                        {ticket.licensePlate}
+                      </Text>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: "#E5E7EB" },
+                        ]}
+                      >
+                        <Text style={[styles.statusText, { color: "#6B7280" }]}>
+                          Đã trả xe
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.ticketDetails}>
+                      <View style={styles.detailItem}>
+                        <Clock size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Giờ vào: {entryTime}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Calendar size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Ngày vào: {entryDate}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Clock size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Giờ ra: {exitTime}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Calendar size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>
+                          Ngày ra: {exitDate}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Text style={styles.detailText}>
+                          Tổng phí: {amount.toLocaleString()}đ
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.ticketActions}>
+                      <TouchableOpacity
+                        style={[styles.checkoutButton, { opacity: 0.5 }]}
+                        disabled={true}
+                      >
+                        <Text style={styles.checkoutButtonText}>Đã trả xe</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </>
         )}
       </ScrollView>
+
+      <Modal visible={showQRModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* <Text style={styles.modalTitle}>Thanh toán VietQR</Text> */}
+            <Image
+              source={{ uri: qrInfo?.qrUrl }}
+              style={{
+                width: 250,
+                height: 350,
+                alignSelf: "center",
+              }}
+            />
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={async () => {
+                setShowQRModal(false);
+                await handleCheckout(qrInfo.ticket.id);
+              }}
+            >
+              <Text style={styles.confirmButtonText}>
+                Xác nhận đã thanh toán
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowQRModal(false)}>
+              <Text
+                style={{
+                  color: "#EF4444",
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                Huỷ
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -306,19 +522,6 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
-  },
-  header: {
-    // Style này không được sử dụng, có thể bỏ
-    padding: 16,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  headerTitle: {
-    // Style này không được sử dụng, có thể bỏ
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#1F2937",
   },
   searchContainer: {
     padding: 16,
@@ -344,36 +547,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  actionsContainer: {
+  tabContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "#EEF2FF",
-    borderWidth: 1,
-    borderColor: "#C7D2FE", // Màu border nhạt hơn
     borderRadius: 8,
-    paddingVertical: 14, // Tăng padding
-    marginHorizontal: 4, // Thêm margin ngang nhỏ
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    overflow: "hidden",
   },
-  actionButtonText: {
-    fontSize: 13, // Điều chỉnh kích thước font
-    fontWeight: "600", // Semi-bold
-    color: "#4338CA", // Màu đậm hơn
-    marginLeft: 8,
-    textAlign: "center",
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
   },
-  scanButton: {
+  tabButtonActive: {
     backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
   },
-  scanButtonText: {
-    color: "#ffffff",
+  tabText: {
+    fontSize: 15,
+    color: "#4F46E5",
+    fontWeight: "600",
+  },
+  tabTextActive: {
+    color: "#fff",
   },
   sectionTitle: {
     fontSize: 18,
@@ -481,5 +679,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#4338CA", // Màu đậm hơn
     fontWeight: "600", // Semi-bold
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 24,
+    alignItems: "center",
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  modalLabel: {
+    fontSize: 16,
+    color: "#374151",
+    marginBottom: 12,
+  },
+  confirmButton: {
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+    textAlign: "center",
   },
 });

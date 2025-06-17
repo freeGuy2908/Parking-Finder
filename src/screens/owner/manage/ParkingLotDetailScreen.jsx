@@ -72,23 +72,27 @@ export default function ParkingLotDetailScreen() {
 
       if (userSnapshot.empty) {
         Alert.alert("Lỗi", "Email này chưa đăng ký tài khoản");
+        setLoading(false);
         return;
       }
 
       const userData = userSnapshot.docs[0].data();
       const userId = userSnapshot.docs[0].id;
 
-      // Check if staff is already assigned
+      // Kiểm tra nhân viên đã làm ở bãi đỗ nào khác chưa (theo staffEmail hoặc staffId)
       const staffRef = collection(db, "staffAssignments");
-      const staffQ = query(
+      const staffEmailQ = query(
         staffRef,
-        where("parkingLotId", "==", lot.id),
         where("staffEmail", "==", newEmail.trim())
       );
-      const staffSnapshot = await getDocs(staffQ);
+      const staffEmailSnapshot = await getDocs(staffEmailQ);
 
-      if (!staffSnapshot.empty) {
-        Alert.alert("Lỗi", "Nhân viên này đã được thêm vào bãi đỗ");
+      const staffIdQ = query(staffRef, where("staffId", "==", userId));
+      const staffIdSnapshot = await getDocs(staffIdQ);
+
+      if (!staffEmailSnapshot.empty && !staffIdSnapshot.empty) {
+        Alert.alert("Lỗi", "Nhân viên này đã làm ở một bãi đỗ khác.");
+        setLoading(false);
         return;
       }
 
@@ -105,6 +109,12 @@ export default function ParkingLotDetailScreen() {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         staffAt: [...(userData.staffAt || []), lot.id],
+      });
+
+      // Cập nhật trường staffs trong parkingLots
+      const lotRef = doc(db, "parkingLots", lot.id);
+      await updateDoc(lotRef, {
+        staffs: [...(lot.staffs || []), newEmail.trim()],
       });
 
       Alert.alert("Thành công", "Đã thêm nhân viên vào bãi đỗ");
@@ -231,6 +241,26 @@ export default function ParkingLotDetailScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <View style={styles.activeVehiclesSection}>
+        <View style={styles.staffTitleRow}>
+          <Car size={18} color="#4F46E5" />
+          <Text style={styles.staffTitle}>Xe đang gửi trong bãi</Text>
+        </View>
+        {lot.activeVehicles && lot.activeVehicles.length > 0 ? (
+          lot.activeVehicles.map((plate, idx) => (
+            <View key={plate + idx} style={styles.activeVehicleItem}>
+              <Text style={styles.plateText}>
+                {idx + 1}. {plate}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noActiveVehicleText}>
+            Không có xe nào đang gửi.
+          </Text>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -299,5 +329,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     marginLeft: 4,
+  },
+  activeVehiclesSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    backgroundColor: "#F3F4F6",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    marginTop: 12,
+  },
+  activeVehicleItem: {
+    paddingVertical: 8,
+    borderBottomColor: "#E5E7EB",
+    borderBottomWidth: 1,
+  },
+  plateText: {
+    fontSize: 15,
+    color: "#1F2937",
+  },
+  noActiveVehicleText: {
+    color: "#6B7280",
+    fontStyle: "italic",
+    marginTop: 8,
   },
 });

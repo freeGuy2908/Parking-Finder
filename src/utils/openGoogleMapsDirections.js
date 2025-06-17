@@ -16,11 +16,11 @@ export const openGoogleMapsDirections = async (
     // const currentLoc = await Location.getCurrentPositionAsync({});
     // const origin = `${currentLoc.coords.latitude}, ${currentLoc.coords.longitude}`;
 
-    // 2. Chuyen dia chi thanh toa do
+    // Chuyen dia chi thanh toa do
     const desCoords = await getLatLngFromAddress(destinationAddress);
     const destination = `${desCoords.lat}, ${desCoords.lng}`;
 
-    // 3. Mo Google Maps
+    // Mo Google Maps
     const url = `https://www.google.com/maps/dir/?api=1&origin=${originAddress}&destination=${destination}&travelmode=driving`;
     Linking.openURL(url);
   } catch (error) {

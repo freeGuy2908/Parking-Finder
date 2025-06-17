@@ -1,9 +1,14 @@
+import React, { useState, useEffect, act } from "react";
+import { useNavigation } from "@react-navigation/native";
+import { useSelector } from "react-redux";
+import { selectUser } from "../../redux/authSlice";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -14,24 +19,14 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
+import { db } from "../../../firebaseConfig";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 export default function OwnerDashboardScreen() {
-  // Mock data for parking lots
-  const parkingLots = [
-    {
-      id: 1,
-      name: "Bãi đỗ xe Trung tâm",
-      totalSpots: 50,
-      availableSpots: 15,
-      occupiedSpots: 35,
-    },
-    {
-      id: 2,
-      name: "Bãi đỗ xe Vincom",
-      totalSpots: 80,
-      availableSpots: 32,
-      occupiedSpots: 48,
-    },
-  ];
+  const [parkingLots, setParkingLots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const user = useSelector(selectUser);
+  const navigation = useNavigation();
 
   // Mock data for statistics
   const statistics = {
@@ -65,6 +60,40 @@ export default function OwnerDashboardScreen() {
     },
   ];
 
+  useEffect(() => {
+    const fetchParkingLots = async () => {
+      try {
+        const q = query(
+          collection(db, "parkingLots"),
+          where("ownerId", "==", user.uid)
+        );
+        const snapshot = await getDocs(q);
+        const lots = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setParkingLots(lots);
+      } catch (error) {
+        console.error("Error fetching parking lots:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.uid) fetchParkingLots();
+  }, [user?.uid]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator
+          size="large"
+          color="#4F46E5"
+          style={{ marginTop: 40 }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content}>
@@ -72,13 +101,26 @@ export default function OwnerDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Bãi đỗ xe của tôi</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Xem tất cả</Text>
-            </TouchableOpacity>
           </View>
 
+          {parkingLots.length === 0 && (
+            <Text
+              style={{
+                color: "#6B7280",
+                textAlign: "center",
+                marginVertical: 24,
+              }}
+            >
+              Bạn chưa có bãi đỗ nào.
+            </Text>
+          )}
+
           {parkingLots.map((lot) => (
-            <TouchableOpacity key={lot.id} style={styles.parkingLotCard}>
+            <TouchableOpacity
+              key={lot.id}
+              style={styles.parkingLotCard}
+              onPress={() => navigation.navigate("ParkingDetail", { lot })}
+            >
               <Text style={styles.parkingLotName}>{lot.name}</Text>
               <View style={styles.parkingLotStats}>
                 <View style={styles.statItem}>
@@ -93,7 +135,7 @@ export default function OwnerDashboardScreen() {
                 </View>
                 <View style={styles.statItem}>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
-                    {lot.occupiedSpots}
+                    {lot.totalSpots - lot.availableSpots}
                   </Text>
                   <Text style={styles.statLabel}>Đang sử dụng</Text>
                 </View>
@@ -102,7 +144,13 @@ export default function OwnerDashboardScreen() {
                 <View
                   style={[
                     styles.progressFill,
-                    { width: `${(lot.occupiedSpots / lot.totalSpots) * 100}%` },
+                    {
+                      width: `${
+                        ((lot.totalSpots - lot.availableSpots) /
+                          lot.totalSpots) *
+                        100
+                      }%`,
+                    },
                   ]}
                 />
               </View>

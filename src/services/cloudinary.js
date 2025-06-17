@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system";
 
 export const uploadToCloudinary = async (uri) => {
   const CLOUD_NAME = "";
-  const UPLOAD_PRESET = "";
+  const UPLOAD_PRESET = "parking_lot_upload";
 
   // Chuyển đổi ảnh sang base64
   const base64Img = await FileSystem.readAsStringAsync(uri, {

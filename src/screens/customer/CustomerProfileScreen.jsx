@@ -79,13 +79,13 @@ export default function CustomerProfileScreen() {
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          {/* <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <Car size={20} color="#4F46E5" style={styles.menuItemIcon} />
               <Text style={styles.menuItemText}>Thông tin xe</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>

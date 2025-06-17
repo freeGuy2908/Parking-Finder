@@ -78,6 +78,12 @@ export default function CustomerMapScreen() {
     fetchDistances();
   }, [userLocation, parkingLots]);
 
+  const filteredParkingLots = parkingLotsWithDistance.filter(
+    (lot) =>
+      lot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lot.address.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!userLocation) {
     return <Text>Đang tải vị trí...</Text>;
   }
@@ -123,7 +129,7 @@ export default function CustomerMapScreen() {
       <View style={styles.nearbyContainer}>
         <Text style={styles.nearbyTitle}>Bãi đỗ xe gần đây</Text>
         <ScrollView style={styles.parkingList}>
-          {parkingLotsWithDistance.map((lot) => (
+          {filteredParkingLots.map((lot) => (
             <TouchableOpacity key={lot.id} style={styles.parkingItem}>
               <View style={styles.parkingInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>

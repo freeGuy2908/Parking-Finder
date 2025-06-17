@@ -128,7 +128,7 @@ export default function CustomerParkingStatusScreen() {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Nhập biển số xe (VD: 30A-12345)"
+            placeholder="Nhập biển số xe(VD: 30A12345)"
             value={licensePlate}
             onChangeText={setLicensePlate}
             autoCapitalize="characters"

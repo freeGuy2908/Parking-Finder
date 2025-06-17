@@ -14,13 +14,16 @@ import {
   UserCircle,
   Users,
   LogIn,
+  LogOut,
   AlertCircle,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 
 // Redux
-import { useSelector } from "react-redux";
-import { selectIsAuthenticated, selectUser } from "../redux/authSlice";
+import { useSelector, useDispatch } from "react-redux";
+import { selectIsAuthenticated, selectUser, logout } from "../redux/authSlice";
+
+// firebase
 import { db } from "../../firebaseConfig"; // Đường dẫn tới file cấu hình Firebase
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -28,6 +31,8 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectUser);
+  const dispatch = useDispatch();
+
   const [isStaff, setIsStaff] = useState(false);
 
   useEffect(() => {
@@ -85,6 +90,17 @@ export default function HomeScreen() {
     } else {
       navigation.navigate("StaffTabs");
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Xác nhận", "Bạn có muốn thoát tài khoản?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: () => dispatch(logout()),
+      },
+    ]);
   };
 
   return (
@@ -175,7 +191,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {!isAuthenticated && (
+        {isAuthenticated ? (
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <LogOut size={20} color="#EF4444" />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
+        ) : (
           <TouchableOpacity
             style={styles.loginPrompt}
             onPress={() => navigation.navigate("Login")}
@@ -300,11 +321,26 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEE2E2",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
   loginPromptText: {
     fontSize: 16,
     color: "#FFFFFF", // Text trắng
     fontWeight: "600",
     marginLeft: 10,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#EF4444",
+    marginLeft: 8,
   },
   footer: {
     paddingVertical: 20,

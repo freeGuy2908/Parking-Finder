@@ -108,8 +108,8 @@ export default function RegisterScreen() {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        createdAt: new Date().toISOString(), // Lưu thời gian tạo tài khoản
-        // Thêm các trường khác nếu cần (ví dụ: role, avatarUrl, ...)
+        staffAt: "",
+        createdAt: new Date().toISOString(),
       });
 
       Alert.alert("Đăng ký thành công", "Tài khoản của bạn đã được tạo.");

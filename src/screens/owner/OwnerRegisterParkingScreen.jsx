@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -23,12 +23,16 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 /** cloudinary import */
 import { uploadToCloudinary } from "../../services/cloudinary";
 
+/** redux import */
 import { useSelector } from "react-redux";
 import { selectUser } from "../../redux/authSlice";
+
+import { getLatLngFromAddress } from "../../utils/getLatLngFromAddress";
 
 export default function OwnerRegisterParkingScreen() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [location, setLocation] = useState(null);
   const [totalSpots, setTotalSpots] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
   const [description, setDescription] = useState("");
@@ -68,6 +72,20 @@ export default function OwnerRegisterParkingScreen() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
+      // lấy location từ address
+      let geoLocation = null;
+      try {
+        const { lat, lng } = await getLatLngFromAddress(address);
+        geoLocation = { latitude: lat, longitude: lng };
+      } catch (error) {
+        Alert.alert(
+          "Lỗi",
+          "Không tìm thấy vị trí từ địa chỉ. Vui lòng nhập lại."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const uploadPromises = images.map((uri) => uploadToCloudinary(uri));
       const imageUrls = await Promise.all(uploadPromises);
 
@@ -75,6 +93,7 @@ export default function OwnerRegisterParkingScreen() {
       const docRef = await addDoc(collection(db, "parkingLots"), {
         name,
         address,
+        location: geoLocation,
         totalSpots: parseInt(totalSpots),
         availableSpots: parseInt(totalSpots),
         pricePerHour: parseInt(pricePerHour),
@@ -171,7 +190,6 @@ export default function OwnerRegisterParkingScreen() {
             placeholder="VD: viettinbank"
             value={bankId}
             onChangeText={setBankId}
-            autoCapitalize="characters"
           />
         </View>
 

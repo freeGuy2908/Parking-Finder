@@ -3,8 +3,8 @@ import * as Location from "expo-location";
 import { getLatLngFromAddress } from "./getLatLngFromAddress";
 
 export const openGoogleMapsDirections = async (
-  originAddress,
-  destinationAddress
+  originLocation,
+  destinationLocation
 ) => {
   try {
     // 1. Lay vi tri hien tai
@@ -17,11 +17,11 @@ export const openGoogleMapsDirections = async (
     // const origin = `${currentLoc.coords.latitude}, ${currentLoc.coords.longitude}`;
 
     // Chuyen dia chi thanh toa do
-    const desCoords = await getLatLngFromAddress(destinationAddress);
-    const destination = `${desCoords.lat}, ${desCoords.lng}`;
+    // const desCoords = await getLatLngFromAddress(destinationAddress);
+    // const destination = `${desCoords.lat}, ${desCoords.lng}`;
 
     // Mo Google Maps
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${originAddress}&destination=${destination}&travelmode=driving`;
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${originLocation}&destination=${destinationLocation}&travelmode=driving`;
     Linking.openURL(url);
   } catch (error) {
     console.error("Lỗi khi chỉ đường: ", error);

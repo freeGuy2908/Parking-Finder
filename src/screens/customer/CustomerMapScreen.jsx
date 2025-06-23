@@ -116,13 +116,22 @@ export default function CustomerMapScreen() {
           }}
           showsUserLocation={true}
         >
-          <Marker
-            coordinate={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
-            }}
-            title="Vị trí của bạn"
-          />
+          {filteredParkingLots.map(
+            (lot) =>
+              lot.location &&
+              lot.location.latitude &&
+              lot.location.longitude && (
+                <Marker
+                  key={lot.id}
+                  coordinate={{
+                    latitude: lot.location.latitude,
+                    longitude: lot.location.longitude,
+                  }}
+                  title={lot.name}
+                  description={lot.address}
+                />
+              )
+          )}
         </MapView>
       </View>
 
@@ -149,7 +158,7 @@ export default function CustomerMapScreen() {
                 onPress={() =>
                   openGoogleMapsDirections(
                     `${userLocation?.latitude}, ${userLocation?.longitude}`,
-                    lot.address
+                    `${lot.location.latitude}, ${lot.location.longitude}`
                   )
                 }
               >

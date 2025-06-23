@@ -30,6 +30,7 @@ import {
   updateDoc,
   doc,
   deleteDoc,
+  arrayUnion,
 } from "firebase/firestore";
 import { db } from "../../../../firebaseConfig";
 
@@ -71,7 +72,7 @@ export default function ParkingLotDetailScreen() {
       const userSnapshot = await getDocs(q);
 
       if (userSnapshot.empty) {
-        Alert.alert("Lỗi", "Email này chưa đăng ký tài khoản");
+        Alert.alert("Lỗi", "Email này không tồn tại");
         setLoading(false);
         return;
       }
@@ -79,19 +80,16 @@ export default function ParkingLotDetailScreen() {
       const userData = userSnapshot.docs[0].data();
       const userId = userSnapshot.docs[0].id;
 
-      // Kiểm tra nhân viên đã làm ở bãi đỗ nào khác chưa (theo staffEmail hoặc staffId)
-      const staffRef = collection(db, "staffAssignments");
-      const staffEmailQ = query(
-        staffRef,
-        where("staffEmail", "==", newEmail.trim())
-      );
-      const staffEmailSnapshot = await getDocs(staffEmailQ);
+      // Kiểm tra nhân viên đã làm ở bãi đỗ nào khác chưa
+      if (userData.staffAt && userData.staffAt !== lot.id) {
+        Alert.alert("Lỗi", "Nhân viên này đang làm ở một bãi đỗ khác.");
+        setLoading(false);
+        return;
+      }
 
-      const staffIdQ = query(staffRef, where("staffId", "==", userId));
-      const staffIdSnapshot = await getDocs(staffIdQ);
-
-      if (!staffEmailSnapshot.empty && !staffIdSnapshot.empty) {
-        Alert.alert("Lỗi", "Nhân viên này đã làm ở một bãi đỗ khác.");
+      // Kiểm tra xem nhân viên đã được thêm vào bãi đỗ này chưa
+      if (userData.staffAt === lot.id) {
+        Alert.alert("Lỗi", "Nhân viên này đã được thêm vào bãi đỗ này rồi.");
         setLoading(false);
         return;
       }
@@ -108,13 +106,13 @@ export default function ParkingLotDetailScreen() {
       // Update user's staffAt array
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
-        staffAt: [...(userData.staffAt || []), lot.id],
+        staffAt: lot.id,
       });
 
       // Cập nhật trường staffs trong parkingLots
       const lotRef = doc(db, "parkingLots", lot.id);
       await updateDoc(lotRef, {
-        staffs: [...(lot.staffs || []), newEmail.trim()],
+        staffs: arrayUnion(newEmail.trim()),
       });
 
       Alert.alert("Thành công", "Đã thêm nhân viên vào bãi đỗ");
@@ -137,7 +135,7 @@ export default function ParkingLotDetailScreen() {
         onPress: async () => {
           setLoading(true);
           try {
-            // Delete staff assignment
+            // Xóa staff assignment
             const staffRef = collection(db, "staffAssignments");
             const q = query(
               staffRef,
@@ -150,7 +148,7 @@ export default function ParkingLotDetailScreen() {
               const docId = snapshot.docs[0].id;
               await deleteDoc(doc(db, "staffAssignments", docId));
 
-              // Update user's staffAt array
+              // cập nhật trường staffAt của nhân viên
               const userQ = query(
                 collection(db, "users"),
                 where("email", "==", email)
@@ -158,11 +156,28 @@ export default function ParkingLotDetailScreen() {
               const userSnapshot = await getDocs(userQ);
               if (!userSnapshot.empty) {
                 const userId = userSnapshot.docs[0].id;
-                const userData = userSnapshot.docs[0].data();
                 await updateDoc(doc(db, "users", userId), {
-                  staffAt: userData.staffAt.filter((id) => id !== lot.id),
+                  staffAt: "",
                 });
               }
+
+              // const lotRef = doc(db, "parkingLots", lot.id);
+              // await updateDoc(lotRef, {
+              //   staffs: lot.staffs.filter((staffEmail) => staffEmail !== email),
+              // });
+              const remainQ = query(
+                collection(db, "staffAssignments"),
+                where("parkingLotId", "==", lot.id)
+              );
+              const remainSnapshot = await getDocs(remainQ);
+              const remainStaffs = remainSnapshot.docs.map(
+                (doc) => doc.data().staffEmail
+              );
+
+              const lotRef = doc(db, "parkingLots", lot.id);
+              await updateDoc(lotRef, {
+                staffs: remainStaffs,
+              });
             }
 
             fetchStaffList();

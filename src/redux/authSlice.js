@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  user: null, // Sẽ lưu { uid, email, fullName, phone, ... }
+  user: null,
   isAuthenticated: false,
   isLoading: true, // Ban đầu là true để chờ onAuthStateChanged
   error: null,
@@ -13,7 +13,7 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload;
-      state.isAuthenticated = !!action.payload; // true nếu user có giá trị, false nếu null
+      state.isAuthenticated = !!action.payload;
       state.isLoading = false;
       state.error = null;
     },

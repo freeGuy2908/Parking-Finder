@@ -25,15 +25,77 @@ import { selectIsAuthenticated, selectUser, logout } from "../redux/authSlice";
 
 // firebase
 import { db } from "../../firebaseConfig"; // Đường dẫn tới file cấu hình Firebase
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+  updateDoc,
+} from "firebase/firestore";
+
+import * as Notifications from "expo-notifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectUser);
+  const userId = user?.uid;
+  //console.log("User :", user);
   const dispatch = useDispatch();
 
   const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        await Notifications.requestPermissionsAsync();
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", userId),
+      where("read", "==", false)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          console.log("New notification:", data);
+          // hien thi local noti
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: data.title,
+              body: data.message,
+            },
+            trigger: null,
+          });
+          // danh dau noti da xem
+          try {
+            await updateDoc(change.doc.ref, { read: true });
+          } catch (err) {
+            console.error("Lỗi khi đánh dấu đã đọc:", err);
+          }
+        }
+      });
+    });
+    return () => unsubscribe();
+  }, [userId]);
 
   useEffect(() => {
     if (isAuthenticated && user) {

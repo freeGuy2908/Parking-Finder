@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MapPin, Info, Camera } from "lucide-react-native";
@@ -70,6 +71,24 @@ export default function OwnerRegisterParkingScreen() {
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
+
+    if (
+      !name.trim() ||
+      !address.trim() ||
+      !totalSpots.trim() ||
+      !pricePerHour.trim() ||
+      !description.trim() ||
+      !bankId.trim() ||
+      !bankAccount.trim() ||
+      images.length === 0
+    ) {
+      Alert.alert(
+        "Thiếu thông tin",
+        "Vui lòng nhập đầy đủ tất cả các thông tin và ít nhất 1 hình ảnh."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // lấy location từ address
@@ -142,10 +161,15 @@ export default function OwnerRegisterParkingScreen() {
               onChangeText={setAddress}
               multiline
             />
-            <TouchableOpacity style={styles.mapButton}>
+            {/* <TouchableOpacity style={styles.mapButton}>
               <MapPin size={20} color="#4F46E5" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
+          <Text style={styles.tooltipText}>
+            Vui lòng nhập địa chỉ theo số nhà, xã/phường/thị trấn,
+            quận/huyện/thành phố, tỉnh để ứng dụng xác định được tọa độ chính
+            xác. VD: 55 Trần Đại Nghĩa, Bách Khoa, Hai Bà Trưng, Hà Nội
+          </Text>
         </View>
 
         <View style={styles.formGroup}>
@@ -225,13 +249,13 @@ export default function OwnerRegisterParkingScreen() {
           ))}
         </View>
 
-        <View style={styles.infoBox}>
+        {/* <View style={styles.infoBox}>
           <Info size={20} color="#4F46E5" />
           <Text style={styles.infoText}>
             Thông tin bãi đỗ xe sẽ được kiểm duyệt trước khi hiển thị trên ứng
             dụng.
           </Text>
-        </View>
+        </View> */}
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Đăng ký bãi đỗ xe</Text>

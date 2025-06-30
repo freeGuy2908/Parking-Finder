@@ -25,7 +25,7 @@ export default function VehicleTracking() {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
   const cameraRef = useRef(null);
-  const navigation = useNavigation(); // Khởi tạo navigation
+  const navigation = useNavigation();
   const user = useSelector(selectUser);
   const [parkingLot, setParkingLot] = useState(null);
 
@@ -36,11 +36,10 @@ export default function VehicleTracking() {
     }
   }, [permission, requestPermission]);
 
-  // Fetch parking lot info for the staff
+  // Lấy thông tin bãi đỗ mà nhân viên đang làm việc
   useEffect(() => {
     const fetchParkingLot = async () => {
       try {
-        // First get staff assignment
         const staffRef = collection(db, "staffAssignments");
         const q = query(staffRef, where("staffId", "==", user.uid));
         const snapshot = await getDocs(q);
@@ -49,7 +48,6 @@ export default function VehicleTracking() {
           const staffAssignment = snapshot.docs[0].data();
           const parkingLotId = staffAssignment.parkingLotId;
 
-          // Then get parking lot details
           const parkingLotRef = doc(db, "parkingLots", parkingLotId);
           const parkingLotDoc = await getDoc(parkingLotRef);
 
@@ -58,7 +56,7 @@ export default function VehicleTracking() {
             setParkingLot({
               id: parkingLotId,
               name: parkingLotData.name,
-              price: parkingLotData.pricePerHour, // Get price from parking lot document
+              price: parkingLotData.pricePerHour,
             });
           } else {
             throw new Error("Parking lot not found");
@@ -82,7 +80,7 @@ export default function VehicleTracking() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.5,
-          base64: false, // Base64 không cần thiết nếu chỉ dùng URI
+          base64: false,
         });
 
         const resizedPhoto = await ImageManipulator.manipulateAsync(
@@ -166,7 +164,7 @@ export default function VehicleTracking() {
         ticketData
       );
 
-      // Logic giảm số chỗ trống khi có xe vào
+      // giảm số chỗ trống khi có xe vào
       if (lotData.availableSpots !== undefined) {
         await updateDoc(parkingLotRef, {
           availableSpots: lotData.availableSpots - 1,
@@ -196,7 +194,7 @@ export default function VehicleTracking() {
         "Lỗi",
         "Vui lòng cung cấp API key hợp lệ của Plate Recognizer."
       );
-      // navigation.goBack(); // Có thể quay lại nếu không có API key
+      // navigation.goBack();
       return;
     }
 
@@ -219,12 +217,46 @@ export default function VehicleTracking() {
         const plate = response.data.results[0].plate;
         setLicensePlate(plate);
 
-        // Create ticket instead of just navigating
+        if (parkingLot && parkingLot.id) {
+          const ticketRef = collection(
+            db,
+            "parkingLots",
+            parkingLot.id,
+            "tickets"
+          );
+          const q = query(
+            ticketRef,
+            where("licensePlate", "==", plate.toUpperCase()),
+            where("status", "==", "active")
+          );
+          const existingTickets = await getDocs(q);
+
+          if (!existingTickets.empty) {
+            Alert.alert(
+              "Xe đang gửi",
+              "Xe này có vé đang gửi, bạn có muốn trả xe không?",
+              [
+                { text: "Không", style: "cancel" },
+                {
+                  text: "Có",
+                  onPress: () => {
+                    navigation.navigate("Tickets", {
+                      searchPlate: plate.toUpperCase(),
+                    });
+                  },
+                },
+              ]
+            );
+            return;
+          }
+        }
+
+        // Chưa có xe gửi thì tạo vé mới
         await createTicket(plate);
       } else {
         Alert.alert(
           "Không tìm thấy biển số",
-          "Không thể nhận dạng biển số từ ảnh. Vui lòng thử lại với ảnh rõ hơn."
+          "Không thể nhận dạng biển số từ ảnh. Vui lòng thử lại."
         );
       }
     } catch (error) {
@@ -281,13 +313,6 @@ export default function VehicleTracking() {
         facing="back"
         ref={cameraRef}
         onCameraReady={() => setIsCameraReady(true)}
-        barcodeScannerSettings={
-          {
-            // Nếu không dùng quét barcode thì có thể bỏ
-            // barCodeTypes: ['qr'],
-          }
-        }
-        // onBarcodeScanned={ ... }
       />
       <View style={styles.controls}>
         <Button
@@ -309,12 +334,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   camera: {
-    flex: 1, // Cho camera chiếm phần lớn không gian
+    flex: 1,
   },
   controls: {
-    // View chứa nút bấm và text hiển thị biển số
     padding: 20,
-    backgroundColor: "rgba(0,0,0,0.7)", // Nền mờ để dễ đọc chữ
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   message: {
     fontSize: 18,
@@ -324,7 +348,7 @@ const styles = StyleSheet.create({
   },
   plateText: {
     fontSize: 18,
-    color: "#00FF00", // Màu xanh lá cho dễ thấy
+    color: "#00FF00",
     textAlign: "center",
     marginTop: 15,
     fontWeight: "bold",

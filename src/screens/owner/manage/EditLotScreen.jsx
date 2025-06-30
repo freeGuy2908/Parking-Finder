@@ -34,6 +34,8 @@ export default function EditLotScreen() {
   const [totalSpots, setTotalSpots] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
   const [description, setDescription] = useState("");
+  const [bankId, setBankId] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
   const [images, setImages] = useState([]);
   const [existingImageUrls, setExistingImageUrls] = useState([]);
   const [removedImageUrls, setRemovedImageUrls] = useState([]);
@@ -69,6 +71,8 @@ export default function EditLotScreen() {
           setPricePerHour(data.pricePerHour?.toString() || "");
           setDescription(data.description || "");
           setExistingImageUrls(data.images || []);
+          setBankId(data.bankId || "");
+          setBankAccount(data.bankAccount || "");
         } else {
           console.log("Không tìm thấy dữ liệu bãi đỗ xe");
         }
@@ -139,6 +143,8 @@ export default function EditLotScreen() {
         pricePerHour: parseInt(pricePerHour),
         description,
         images: updatedImageUrls,
+        bankId: bankId.trim().toLowerCase(),
+        bankAccount: bankAccount.trim(),
         updatedAt: serverTimestamp(),
       });
 
@@ -180,15 +186,19 @@ export default function EditLotScreen() {
           <Text style={styles.label}>Địa chỉ</Text>
           <View style={styles.addressInputContainer}>
             <TextInput
-              style={styles.addressInput}
+              style={[
+                styles.addressInput,
+                { backgroundColor: "#F3F4F6", color: "#9CA3AF" },
+              ]}
               placeholder="Nhập địa chỉ bãi đỗ xe"
               value={address}
               onChangeText={setAddress}
               multiline
+              editable={false}
             />
-            <TouchableOpacity style={styles.mapButton}>
+            {/* <TouchableOpacity style={styles.mapButton}>
               <MapPin size={20} color="#4F46E5" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -224,6 +234,27 @@ export default function EditLotScreen() {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Tên ngân hàng nhận thanh toán</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="VD: viettinbank"
+            value={bankId}
+            onChangeText={setBankId}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Số tài khoản nhận thanh toán</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nhập số tài khoản"
+            value={bankAccount}
+            onChangeText={setBankAccount}
+            keyboardType="numeric"
           />
         </View>
 
@@ -282,13 +313,13 @@ export default function EditLotScreen() {
           </>
         )}
 
-        <View style={styles.infoBox}>
+        {/* <View style={styles.infoBox}>
           <Info size={20} color="#4F46E5" />
           <Text style={styles.infoText}>
             Thay đổi thông tin bãi đỗ xe có thể cần được kiểm duyệt lại trước
             khi hiển thị trên ứng dụng.
           </Text>
-        </View>
+        </View> */}
 
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.disabledButton]}

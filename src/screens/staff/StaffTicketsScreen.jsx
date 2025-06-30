@@ -47,7 +47,7 @@ export default function StaffTicketsScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [parkingLot, setParkingLot] = useState(null);
-  const [selectedTab, setSelectedTab] = useState("active"); // chia tab cho Vé
+  const [selectedTab, setSelectedTab] = useState("active");
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrInfo, setQrInfo] = useState(null); // { ticket, amount, qrUrl }
 
@@ -55,11 +55,19 @@ export default function StaffTicketsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
-  // Fetch parking lot info and all tickets (active + completed)
+  // lấy biển số xe đang gửi khi chụp ảnh
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.searchPlate) {
+        setSearchQuery(route.params?.searchPlate);
+        navigation.setParams({ searchPlate: undefined });
+      }
+    }, [route.params?.searchPlate])
+  );
+
   useEffect(() => {
     const fetchParkingLotAndTickets = async () => {
       try {
-        // First, get staff's parking lot
         const staffRef = collection(db, "staffAssignments");
         const staffQuery = query(staffRef, where("staffId", "==", user.uid));
         const staffSnapshot = await getDocs(staffQuery);
@@ -211,7 +219,7 @@ export default function StaffTicketsScreen() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const date = dateObj.toLocaleDateString("vi-VN"); // Định dạng dd/mm/yyyy
+    const date = dateObj.toLocaleDateString("vi-VN");
     return { date, time };
   };
 

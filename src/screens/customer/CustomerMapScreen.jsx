@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Modal,
+  Image,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +25,8 @@ export default function CustomerMapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [parkingLots, setParkingLots] = useState([]);
   const [parkingLotsWithDistance, setParkingLotsWithDistance] = useState([]);
+  const [selectedLot, setSelectedLot] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Hàm lấy dữ liệu từ Firestore
   const fetchParkingLots = async () => {
@@ -71,7 +75,13 @@ export default function CustomerMapScreen() {
         })
       );
 
-      updatedLots.sort((a, b) => a.distanceValue - b.distanceValue);
+      //updatedLots.sort((a, b) => a.distanceValue - b.distanceValue);
+      updatedLots.sort((a, b) => {
+        const aAvailable = (a.availableSpots || 0) > 0 ? 0 : 1;
+        const bAvailable = (b.availableSpots || 0) > 0 ? 0 : 1;
+        if (aAvailable !== bAvailable) return aAvailable - bAvailable;
+        return a.distanceValue - b.distanceValue;
+      });
       setParkingLotsWithDistance(updatedLots);
     };
 
@@ -139,7 +149,14 @@ export default function CustomerMapScreen() {
         <Text style={styles.nearbyTitle}>Bãi đỗ xe gần đây</Text>
         <ScrollView style={styles.parkingList}>
           {filteredParkingLots.map((lot) => (
-            <TouchableOpacity key={lot.id} style={styles.parkingItem}>
+            <TouchableOpacity
+              key={lot.id}
+              style={styles.parkingItem}
+              onPress={() => {
+                setSelectedLot(lot);
+                setShowModal(true);
+              }}
+            >
               <View style={styles.parkingInfo}>
                 <Text style={styles.parkingName}>{lot.name}</Text>
                 <Text style={styles.parkingAddress}>{lot.address}</Text>
@@ -168,6 +185,121 @@ export default function CustomerMapScreen() {
           ))}
         </ScrollView>
       </View>
+      <Modal visible={showModal} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              width: "90%",
+              padding: 16,
+              alignItems: "center",
+            }}
+          >
+            {selectedLot?.images?.length > 0 && (
+              <Image
+                source={{ uri: selectedLot.images[0] }}
+                style={{
+                  width: "100%",
+                  height: 180,
+                  borderRadius: 12,
+                  marginBottom: 16,
+                }}
+                resizeMode="cover"
+              />
+            )}
+            <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
+              {selectedLot?.name}
+            </Text>
+            <View style={{ alignSelf: "stretch" }}>
+              <Text
+                style={{
+                  color: "#6B7280",
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                }}
+              >
+                Địa chỉ:
+              </Text>
+              <Text
+                style={{ color: "#6B7280", marginBottom: 8, marginLeft: 8 }}
+              >
+                {selectedLot?.address}
+              </Text>
+
+              <Text
+                style={{
+                  color: "#4F46E5",
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                }}
+              >
+                Giá theo giờ:
+              </Text>
+              <Text
+                style={{ color: "#4F46E5", marginBottom: 8, marginLeft: 8 }}
+              >
+                {selectedLot?.pricePerHour?.toLocaleString()}đ/giờ
+              </Text>
+
+              <Text
+                style={{
+                  color: "#1F2937",
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                }}
+              >
+                Chỗ trống:
+              </Text>
+              <Text
+                style={{ color: "#1F2937", marginBottom: 8, marginLeft: 8 }}
+              >
+                {selectedLot?.availableSpots} / {selectedLot?.totalSpots} chỗ
+                trống
+              </Text>
+
+              <Text
+                style={{
+                  color: "#374151",
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                }}
+              >
+                Mô tả:
+              </Text>
+              <Text
+                style={{
+                  color: "#374151",
+                  marginBottom: 16,
+                  marginLeft: 8,
+                  textAlign: "left",
+                }}
+              >
+                {selectedLot?.description}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#4F46E5",
+                paddingVertical: 10,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                marginTop: 8,
+              }}
+              onPress={() => setShowModal(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

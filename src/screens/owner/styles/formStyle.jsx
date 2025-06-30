@@ -200,4 +200,10 @@ export const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: "#A5B4FC",
   },
+  tooltipText: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
 });

@@ -28,38 +28,6 @@ export default function OwnerDashboardScreen() {
   const user = useSelector(selectUser);
   const navigation = useNavigation();
 
-  // Mock data for statistics
-  const statistics = {
-    totalRevenue: "5,250,000 VND",
-    totalVehicles: 210,
-    averageDuration: "2.5 giờ",
-  };
-
-  // Mock data for recent activities
-  const recentActivities = [
-    {
-      id: 1,
-      licensePlate: "51F-123.45",
-      action: "Vào bãi",
-      time: "15:30, 15/04/2024",
-      parkingLot: "Bãi đỗ xe Trung tâm",
-    },
-    {
-      id: 2,
-      licensePlate: "59A-678.90",
-      action: "Ra bãi",
-      time: "15:15, 15/04/2024",
-      parkingLot: "Bãi đỗ xe Trung tâm",
-    },
-    {
-      id: 3,
-      licensePlate: "51G-246.80",
-      action: "Vào bãi",
-      time: "14:45, 15/04/2024",
-      parkingLot: "Bãi đỗ xe Vincom",
-    },
-  ];
-
   useEffect(() => {
     const fetchParkingLots = async () => {
       try {
@@ -155,69 +123,6 @@ export default function OwnerDashboardScreen() {
                 />
               </View>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Statistics section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thống kê tháng này</Text>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <DollarSign size={24} color="#4F46E5" />
-              <Text style={styles.statCardValue}>
-                {statistics.totalRevenue}
-              </Text>
-              <Text style={styles.statCardLabel}>Doanh thu</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <Car size={24} color="#4F46E5" />
-              <Text style={styles.statCardValue}>
-                {statistics.totalVehicles}
-              </Text>
-              <Text style={styles.statCardLabel}>Lượt xe</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <Clock size={24} color="#4F46E5" />
-              <Text style={styles.statCardValue}>
-                {statistics.averageDuration}
-              </Text>
-              <Text style={styles.statCardLabel}>Thời gian trung bình</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <TrendingUp size={24} color="#4F46E5" />
-              <TouchableOpacity style={styles.viewReportButton}>
-                <Text style={styles.viewReportText}>Xem báo cáo</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Recent activities section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Xem tất cả</Text>
-            </TouchableOpacity>
-          </View>
-
-          {recentActivities.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={styles.activityLeft}>
-                <Text style={styles.licensePlate}>{activity.licensePlate}</Text>
-                <Text style={styles.activityDetails}>
-                  {activity.action} • {activity.time}
-                </Text>
-                <Text style={styles.activityLocation}>
-                  {activity.parkingLot}
-                </Text>
-              </View>
-              <ChevronRight size={20} color="#9CA3AF" />
-            </View>
           ))}
         </View>
       </ScrollView>

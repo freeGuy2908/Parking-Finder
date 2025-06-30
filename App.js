@@ -75,7 +75,7 @@ function RootNavigator() {
               setUser({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
-                fullName: userData.fullName, // Lấy fullName từ Firestore
+                fullName: userData.fullName,
                 phone: userData.phone,
                 createdAt: userData.createdAt,
               })
@@ -152,12 +152,8 @@ function RootNavigator() {
             />
           </>
         ) : (
-          <>
-            {/* Các màn hình chính khi đã đăng nhập */}
-            {/* HomeScreen vẫn có thể được truy cập lại từ đây nếu cần, hoặc bạn có thể có một Home khác cho người dùng đã đăng nhập */}
-          </>
+          <>{/* Các màn hình chính khi đã đăng nhập */}</>
         )}
-        {/* Các Navigators này có thể cần kiểm tra quyền truy cập bên trong chúng hoặc dựa vào vai trò user */}
         <Stack.Screen
           name="CustomerTabs"
           component={CustomerNavigator}

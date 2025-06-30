@@ -27,6 +27,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -69,6 +70,24 @@ export default function OwnerManageParkingScreen() {
   );
 
   const handleDeleteParkingLot = async (id) => {
+    const lotRef = doc(db, "parkingLots", id);
+    const lotSnap = await getDoc(lotRef);
+    if (!lotSnap.exists()) {
+      Alert.alert("Lỗi", "Không tìm thấy bãi đỗ này.");
+      return;
+    }
+    const lotData = lotSnap.data();
+
+    if (
+      (lotData.activeVehicles && lotData.activeVehicles.length > 0) ||
+      (lotData.staffs && lotData.staffs.length > 0)
+    ) {
+      Alert.alert(
+        "Không thể xóa",
+        "Bãi đỗ vẫn còn nhân viên đang làm việc hoặc xe đang gửi."
+      );
+      return;
+    }
     Alert.alert(
       "Xác nhận xóa",
       "Ban có chắc chắn muốn xóa bãi đỗ này không?",

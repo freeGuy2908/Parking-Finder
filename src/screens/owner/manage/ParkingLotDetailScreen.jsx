@@ -41,7 +41,6 @@ export default function ParkingLotDetailScreen() {
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Fetch existing staff when component mounts
   useEffect(() => {
     fetchStaffList();
   }, [lot.id]);
@@ -66,7 +65,7 @@ export default function ParkingLotDetailScreen() {
 
     setLoading(true);
     try {
-      // Check if email exists in users collection
+      // Kiểm tra email đã đăng ký chưa
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", newEmail.trim()));
       const userSnapshot = await getDocs(q);
@@ -94,7 +93,6 @@ export default function ParkingLotDetailScreen() {
         return;
       }
 
-      // Add staff assignment
       await addDoc(collection(db, "staffAssignments"), {
         parkingLotId: lot.id,
         parkingLotName: lot.name,
@@ -103,7 +101,6 @@ export default function ParkingLotDetailScreen() {
         createdAt: new Date().toISOString(),
       });
 
-      // Update user's staffAt array
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         staffAt: lot.id,
@@ -113,6 +110,16 @@ export default function ParkingLotDetailScreen() {
       const lotRef = doc(db, "parkingLots", lot.id);
       await updateDoc(lotRef, {
         staffs: arrayUnion(newEmail.trim()),
+      });
+
+      // tạo notification
+      await addDoc(collection(db, "notifications"), {
+        userId: userId,
+        email: newEmail.trim(),
+        title: "Thông báo",
+        message: `Bạn đã được thêm làm nhân viên tại ${lot.name}`,
+        createdAt: new Date().toISOString(),
+        read: false,
       });
 
       Alert.alert("Thành công", "Đã thêm nhân viên vào bãi đỗ");

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Alert, // Thêm Alert
+  Alert,
   ActivityIndicator, // Thêm ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,14 +27,9 @@ import { auth, db } from "../../../firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
-// Redux imports (nếu bạn muốn dispatch sau khi đăng ký thành công,
-// nhưng thường thì onAuthStateChanged sẽ xử lý việc này)
-// import { useDispatch } from "react-redux";
-// import { setUser } from "../../store/authSlice"; // Điều chỉnh đường dẫn
-
 export default function RegisterScreen() {
   const navigation = useNavigation();
-  // const dispatch = useDispatch(); // Nếu cần dispatch trực tiếp
+  // const dispatch = useDispatch();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +49,6 @@ export default function RegisterScreen() {
       Alert.alert("Lỗi", "Vui lòng nhập email.");
       return false;
     }
-    // Regex đơn giản để kiểm tra email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("Lỗi", "Địa chỉ email không hợp lệ.");
@@ -64,7 +58,6 @@ export default function RegisterScreen() {
       Alert.alert("Lỗi", "Vui lòng nhập số điện thoại.");
       return false;
     }
-    // Regex đơn giản cho số điện thoại Việt Nam (tùy chỉnh nếu cần)
     const phoneRegex = /^(0[3|5|7|8|9])+([0-9]{8})\b/;
     if (!phoneRegex.test(phone)) {
       Alert.alert("Lỗi", "Số điện thoại không hợp lệ.");
@@ -92,7 +85,6 @@ export default function RegisterScreen() {
 
     setIsSubmitting(true);
     try {
-      // 1. Tạo user với email và password trong Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -100,8 +92,6 @@ export default function RegisterScreen() {
       );
       const firebaseUser = userCredential.user;
 
-      // 2. Lưu thông tin user vào Firestore
-      // Sử dụng UID từ Authentication làm ID cho document trong Firestore
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await setDoc(userDocRef, {
         uid: firebaseUser.uid,
@@ -114,7 +104,7 @@ export default function RegisterScreen() {
 
       Alert.alert("Đăng ký thành công", "Tài khoản của bạn đã được tạo.");
       // onAuthStateChanged sẽ tự động cập nhật Redux store và điều hướng
-      // navigation.navigate("Login"); // Hoặc điều hướng thẳng đến Home nếu muốn
+      // navigation.navigate("Home");
     } catch (error) {
       console.error("Lỗi đăng ký:", error);
       let errorMessage =

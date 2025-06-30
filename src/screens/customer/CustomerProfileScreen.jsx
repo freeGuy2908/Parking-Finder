@@ -59,7 +59,7 @@ export default function CustomerProfileScreen() {
       <ScrollView style={styles.content}>
         <View style={styles.profileSection}>
           <Image
-            source={{ uri: "https://placeholder.svg?height=80&width=80" }}
+            source={require("../../../assets/Profile_avatar.png")}
             style={styles.profileImage}
           />
           <View style={styles.profileInfo}>
@@ -68,7 +68,7 @@ export default function CustomerProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.menuSection}>
+        {/* <View style={styles.menuSection}>
           <Text style={styles.menuSectionTitle}>Tài khoản</Text>
 
           <TouchableOpacity style={styles.menuItem}>
@@ -79,15 +79,15 @@ export default function CustomerProfileScreen() {
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {/* <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <Car size={20} color="#4F46E5" style={styles.menuItemIcon} />
               <Text style={styles.menuItemText}>Thông tin xe</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity> */}
+          </TouchableOpacity>
 
-          {/* <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <CreditCard
                 size={20}
@@ -97,7 +97,7 @@ export default function CustomerProfileScreen() {
               <Text style={styles.menuItemText}>Phương thức thanh toán</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
 
         <View style={styles.menuSection}>
@@ -110,7 +110,7 @@ export default function CustomerProfileScreen() {
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color="#EF4444" />

@@ -54,10 +54,6 @@ export default function LoginScreen() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Đăng nhập thành công, onAuthStateChanged sẽ xử lý việc cập nhật Redux store
-      // và điều hướng người dùng.
-      // Alert.alert("Đăng nhập thành công", "Chào mừng bạn trở lại!");
-      // Không cần navigate("Home") ở đây nữa nếu onAuthStateChanged đã xử lý
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
       let errorMessage =
@@ -85,7 +81,7 @@ export default function LoginScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()} // Hoặc navigate tới màn hình chào mừng nếu có
+          onPress={() => navigation.goBack()}
         >
           <ChevronLeft size={24} color="#1F2937" />
         </TouchableOpacity>
@@ -180,7 +176,6 @@ export default function LoginScreen() {
   );
 }
 
-// Styles tương tự như RegisterScreen, bạn có thể tùy chỉnh
 const styles = StyleSheet.create({
   container: {
     flex: 1,

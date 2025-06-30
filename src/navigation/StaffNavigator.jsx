@@ -40,14 +40,14 @@ export default function StaffNavigator() {
           tabBarIcon: ({ color }) => <QrCode size={24} color={color} />,
         }}
       />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Payment"
         component={StaffPaymentScreen}
         options={{
           title: "Thanh toán",
           tabBarIcon: ({ color }) => <DollarSign size={24} color={color} />,
         }}
-      />
+      /> */}
       <Tab.Screen
         name="Profile"
         component={CustomerProfileScreen}
